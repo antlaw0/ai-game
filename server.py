@@ -1,45 +1,102 @@
-from flask import Flask, request, jsonify
-import psycopg2
+import os
+import traceback
+import requests
+import json
+from flask import Flask, request, jsonify, render_template
+from flask_cors import CORS
+from sqlalchemy import create_engine, Column, Integer, String, Text
+from sqlalchemy.orm import sessionmaker, declarative_base
 
+# Set system prompt to be used every time a message is sent to the AI
+system_info = """
+This is a text-based game where the player types how they cook a dish and the AI determines the outcome. 
+The player starts out owning a small food cart in a large city. All they have to begin with is a hot plate 
+and basic utensils such as a spoon, spatula, forks, knives, etc. For procuring ingredients, the player will 
+have to visit a special store where chefs go to purchase ingredients. There is a produce section, butcher, 
+cooking equipment, spices—everything the player will need.
+
+The player starts out with a small sum of money. For instructional purposes, let's say $200. 
+As far as pricing of ingredients and items go, try to make a reasonable estimate based on whatever data 
+and other methods of reasoning you have to assign prices to items. The player can ask if certain items 
+are available, and how much it will cost.
+...
+"""
+
+# Load Together AI API Key from environment variable
+API_KEY = os.getenv("REMOVED_SECRET")
+if not API_KEY:
+    raise ValueError("REMOVED_SECRET is not set in environment variables.")
+
+# Together AI API Endpoint
+TOGETHER_AI_URL = "https://api.together.ai/v1/chat/completions"
+
+# Flask app setup
 app = Flask(__name__)
+CORS(app)  # Allow cross-origin requests (for frontend)
 
-# PostgreSQL Connection
-DB_CONFIG = {
-    "dbname": "your_database",
-    "user": "your_username",
-    "password": "your_password",
-    "host": "your_server_ip",
-    "port": "5432"  # Default PostgreSQL port
-}
+# Database setup
+DATABASE_URL = "sqlite:///game_data.db"
+engine = create_engine(DATABASE_URL, echo=True)
+SessionLocal = sessionmaker(bind=engine)
+Base = declarative_base()
 
-def get_db_connection():
-    return psycopg2.connect(**DB_CONFIG)
+# Define a database model (optional, modify as needed)
+class GameState(Base):
+    __tablename__ = "game_state"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, index=True)
+    game_data = Column(Text)
 
-@app.route('/get_response', methods=['GET'])
-def get_response():
-    player_input = request.args.get('input')
+# Create database tables
+Base.metadata.create_all(bind=engine)
 
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("SELECT ai_response FROM game_memory WHERE player_input = %s", (player_input,))
-    row = cur.fetchone()
-    conn.close()
+# Serve the game page
+@app.route("/")
+def index():
+    return render_template("index.html")
 
-    return jsonify({"response": row[0] if row else None})
+@app.route("/game")
+def game():
+    return render_template("game.html")
 
-@app.route('/save_response', methods=['POST'])
-def save_response():
-    data = request.json
-    player_input = data["input"]
-    ai_response = data["response"]
+# API endpoint for AI responses
+@app.route("/api/chat", methods=["POST"])
+def chat():
+    try:
+        data = request.get_json()
+        user_input = data.get("message", "")
 
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("INSERT INTO game_memory (player_input, ai_response) VALUES (%s, %s) ON CONFLICT (player_input) DO UPDATE SET ai_response = EXCLUDED.ai_response", (player_input, ai_response))
-    conn.commit()
-    conn.close()
+        if not user_input:
+            return jsonify({"error": "No message provided"}), 400
 
-    return jsonify({"message": "Response saved!"})
+        # Send request to Together AI
+        headers = {
+            "Authorization": f"Bearer {API_KEY}",
+            "Content-Type": "application/json"
+        }
 
-if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=5000)
+        payload = {
+            "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+            "messages": [
+                {"role": "system", "content": system_info},  # Fix: Correct variable name
+                {"role": "user", "content": user_input}
+            ],
+            "temperature": 0.7
+        }
+
+        response = requests.post(TOGETHER_AI_URL, headers=headers, json=payload)
+
+        if response.status_code == 200:
+            ai_response = response.json()["choices"][0]["message"]["content"]
+            return jsonify({"response": ai_response})
+        else:
+            return jsonify({"error": "Failed to fetch AI response", "details": response.text}), 500
+
+    except Exception as e:
+        print("Error processing request:")
+        traceback.print_exc()  # Prints the full error stack tracebackreturn jsonify({"error": str(e)}), 500
+        return jsonify({"error": str(e)}), 500
+
+# Start the Flask server
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000, debug=True)
