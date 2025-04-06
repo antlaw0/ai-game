@@ -6,7 +6,7 @@ from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 from sqlalchemy import create_engine, Column, Integer, String, Text
 from sqlalchemy.orm import sessionmaker, declarative_base
-
+port = int(os.environ.get("PORT", 5000))
 # Set system prompt to be used every time a message is sent to the AI
 system_info = """
 This is a text-based game where the player types how they cook a dish and the AI determines the outcome. 
@@ -104,4 +104,4 @@ def chat():
 
 # Start the Flask server (For Render, we do not need to specify host and port)
 if __name__ == "__main__":
-    app.run(debug=True)  # Render will automatically manage the host and port
+    app.run(host="0.0.0.0", port=port)
