@@ -1,0 +1,10 @@
+{
+  "name": "my-web-service",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "flask": "^0.2.10"
+  }
+}
