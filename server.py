@@ -94,9 +94,14 @@ def chat():
 
     except Exception as e:
         print("Error processing request:")
-        traceback.print_exc()  # Prints the full error stack tracebackreturn jsonify({"error": str(e)}), 500
+        traceback.print_exc()  # Prints the full error stack traceback
+        return jsonify({"error": str(e)}), 500
         return jsonify({"error": str(e)}), 500
 
 # Start the Flask server
+#if __name__ == "__main__":
+    #app.run(host="0.0.0.0", port=5000, debug=True)
+
+# Start the Flask server (For Render, we do not need to specify host and port)
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(debug=True)  # Render will automatically manage the host and port
