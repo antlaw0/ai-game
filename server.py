@@ -1,79 +1,180 @@
 import os
+import json
 import traceback
 import requests
-import json
+import bcrypt
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
-from sqlalchemy import create_engine, Column, Integer, String, Text
+from sqlalchemy import create_engine, Column, Integer, String, Float, Text
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-# System prompt to guide the AI
+# ---------- SYSTEM PROMPT ----------
 system_info = """
-This is a text-based game where the player types how they cook a dish and the AI determines the outcome. 
-The player starts out owning a small food cart in a large city. All they have to begin with is a hot plate 
-and basic utensils such as a spoon, spatula, forks, knives, etc. For procuring ingredients, the player will 
-have to visit a special store where chefs go to purchase ingredients. There is a produce section, butcher, 
-cooking equipment, spices—everything the player will need.
+You are running a text-based cooking game. The player starts with $200 and a small food cart.
+They can buy ingredients and cooking equipment from a store at the start of each day.
+Each day has four cooking sessions: breakfast, lunch, dinner, and dessert.
+The player types what and how they cook, and you respond with detailed feedback and
+award money based on how well they cooked.
 
-The player starts out with a small sum of money. For instructional purposes, let's say $200. 
-As far as pricing of ingredients and items go, try to make a reasonable estimate based on whatever data 
-and other methods of reasoning you have to assign prices to items. The player can ask if certain items 
-are available, and how much it will cost.
+You must consider:
+- Their available money
+- Ingredients and quantities
+- The day number
+- Previous actions (last 3)
+Respond like a game master. Stay immersive and do not break character.
 """
 
-# Load Together AI API Key
+# ---------- ENVIRONMENT ----------
 API_KEY = os.getenv("REMOVED_SECRET")
-if not API_KEY:
-    raise ValueError("REMOVED_SECRET is not set in environment variables.")
-
-# Together AI API Endpoint
-TOGETHER_AI_URL = "https://api.together.ai/v1/chat/completions"
-
-# Flask setup
-app = Flask(__name__)
-CORS(app)
-
-# Load Supabase/Postgres DB credentials from env
 DB_USER = os.getenv("SUPABASE_DB_USER", "postgres")
 DB_PASSWORD = os.getenv("SUPABASE_DB_PASSWORD")
-DB_HOST = os.getenv("SUPABASE_DB_URL")  # format like "db.xyz.supabase.co"
+DB_HOST = os.getenv("SUPABASE_DB_URL")
 DB_PORT = os.getenv("SUPABASE_DB_PORT", "5432")
 DB_NAME = os.getenv("SUPABASE_DB_NAME", "postgres")
 
-# Construct Postgres connection string
 DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
-# SQLAlchemy setup
+# ---------- DATABASE ----------
 engine = create_engine(DATABASE_URL, echo=True)
 SessionLocal = sessionmaker(bind=engine)
 Base = declarative_base()
 
-# Define basic game state table
+class User(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True)
+    email = Column(String, unique=True, nullable=False)
+    password_hash = Column(String, nullable=False)
+    name = Column(String)
+    restaurant = Column(String)
+
 class GameState(Base):
     __tablename__ = "game_state"
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(String, index=True)
-    game_data = Column(Text)
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer)
+    day = Column(Integer, default=1)
+    money = Column(Float, default=200.0)
+    inventory = Column(Text, default='{}')
+    log = Column(Text, default="")
 
-# Create tables if not exist
 Base.metadata.create_all(bind=engine)
+
+# ---------- APP ----------
+app = Flask(__name__)
+CORS(app)
 
 @app.route("/")
 def index():
     return render_template("index.html")
 
+@app.route("/login-page")
+def login_page():
+    return render_template("login.html")
+
+
 @app.route("/game")
 def game():
     return render_template("game.html")
 
+@app.route("/register", methods=["POST"])
+def register():
+    session = SessionLocal()
+    data = request.json
+    email = data.get("email")
+    password = data.get("password")
+
+    if not email or not password:
+        return jsonify({"error": "Email and password required"}), 400
+
+    existing = session.query(User).filter_by(email=email).first()
+    if existing:
+        return jsonify({"error": "Email already registered"}), 409
+
+    password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+    user = User(email=email, password_hash=password_hash)
+    session.add(user)
+    session.commit()
+    return jsonify({"message": "User registered", "user_id": user.id})
+
+@app.route("/login", methods=["POST"])
+def login():
+    session = SessionLocal()
+    data = request.json
+    email = data.get("email")
+    password = data.get("password")
+
+    user = session.query(User).filter_by(email=email).first()
+    if not user or not bcrypt.checkpw(password.encode(), user.password_hash.encode()):
+        return jsonify({"error": "Invalid credentials"}), 401
+    return jsonify({"message": "Login successful", "user_id": user.id, "name": user.name, "restaurant": user.restaurant})
+
+@app.route("/api/buy", methods=["POST"])
+def buy():
+    session = SessionLocal()
+    try:
+        data = request.json
+        user_id = data.get("user_id")
+        items = data.get("items")  # List of {name, quantity, price}
+
+        state = session.query(GameState).filter_by(user_id=user_id).first()
+        if not state:
+            return jsonify({"error": "Game state not found"}), 404
+
+        inventory = json.loads(state.inventory or '{}')
+        total_cost = 0.0
+
+        for item in items:
+            name = item['name']
+            qty = int(item['quantity'])
+            price = float(item['price'])
+            total_cost += qty * price
+            inventory[name] = inventory.get(name, 0) + qty
+
+        if total_cost > state.money:
+            return jsonify({"error": "Not enough funds"}), 400
+
+        state.money -= total_cost
+        state.inventory = json.dumps(inventory)
+        session.commit()
+
+        return jsonify({"message": "Items purchased", "money": state.money, "inventory": inventory})
+
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+    finally:
+        session.close()
+
 @app.route("/api/chat", methods=["POST"])
 def chat():
+    session = SessionLocal()
     try:
         data = request.get_json()
-        user_input = data.get("message", "")
+        user_id = data.get("user_id")
+        user_input = data.get("message")
 
-        if not user_input:
-            return jsonify({"error": "No message provided"}), 400
+        user = session.query(User).filter_by(id=user_id).first()
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+
+        state = session.query(GameState).filter_by(user_id=user_id).first()
+        if not state:
+            state = GameState(user_id=user_id)
+            session.add(state)
+            session.commit()
+
+        history = (state.log or "").strip().split("\n\n")[-3:]
+        inventory_dict = json.loads(state.inventory or '{}')
+        inventory_str = "\n".join(f"- {k}: {v}" for k, v in inventory_dict.items())
+
+        context = f"""
+Player Name: {user.name or 'Unknown'}
+Restaurant: {user.restaurant or 'Unknown'}
+Day: {state.day}
+Money: ${state.money:.2f}
+Inventory:\n{inventory_str or 'None'}
+
+Recent Interactions:\n" + "\n\n".join(history)
 
         headers = {
             "Authorization": f"Bearer {API_KEY}",
@@ -81,28 +182,42 @@ def chat():
         }
 
         payload = {
-            "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+            "model": "meta-llama/Llama-3-70B-Instruct",
             "messages": [
                 {"role": "system", "content": system_info},
-                {"role": "user", "content": user_input}
+                {"role": "user", "content": context + "\n\nPlayer says: " + user_input}
             ],
             "temperature": 0.7
         }
 
-        response = requests.post(TOGETHER_AI_URL, headers=headers, json=payload)
+        response = requests.post("https://api.together.ai/v1/chat/completions", headers=headers, json=payload)
 
-        if response.status_code == 200:
-            ai_response = response.json()["choices"][0]["message"]["content"]
-            return jsonify({"response": ai_response})
-        else:
-            return jsonify({"error": "Failed to fetch AI response", "details": response.text}), 500
+        if response.status_code != 200:
+            return jsonify({"error": "AI request failed", "details": response.text}), 500
+
+        ai_response = response.json()["choices"][0]["message"]["content"]
+        new_log = f"Player: {user_input}\nAI: {ai_response}"
+        combined_log = (state.log or "") + "\n\n" + new_log
+        state.log = combined_log.strip()[-3000:]
+        session.commit()
+
+        return jsonify({
+            "response": ai_response,
+            "player": user.name,
+            "restaurant": user.restaurant,
+            "day": state.day,
+            "money": state.money,
+            "inventory": inventory_dict
+        })
 
     except Exception as e:
-        print("Error processing request:")
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
-# Run the server
+    finally:
+        session.close()
+
+# ---------- RUN ----------
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
