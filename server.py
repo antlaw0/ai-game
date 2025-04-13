@@ -68,7 +68,11 @@ def index():
 
 @app.route("/login-page")
 def login_page():
-    return render_template("login.html")
+    return render_template("index.html")
+
+@app.route("/register-page")
+def register_page():
+    return render_template("register.html")
 
 @app.route("/game")
 def game():
@@ -77,39 +81,54 @@ def game():
 @app.route("/register", methods=["POST"])
 def register():
     session = SessionLocal()
-    data = request.json
-    email = data.get("email")
-    password = data.get("password")
+    try:
+        data = request.get_json()
+        email = data.get("email")
+        password = data.get("password")
 
-    if not email or not password:
-        return jsonify({"error": "Email and password required"}), 400
+        if not email or not password:
+            return jsonify({"error": "Email and password required"}), 400
 
-    existing = session.query(User).filter_by(email=email).first()
-    if existing:
-        return jsonify({"error": "Email already registered"}), 409
+        existing = session.query(User).filter_by(email=email).first()
+        if existing:
+            return jsonify({"error": "Email already registered"}), 409
 
-    password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-    user = User(email=email, password_hash=password_hash)
-    session.add(user)
-    session.commit()
-    return jsonify({"message": "User registered", "user_id": user.id})
+        password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+        user = User(email=email, password_hash=password_hash)
+        session.add(user)
+        session.commit()
+        return jsonify({"message": "User registered", "user_id": user.id})
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        session.close()
 
 @app.route("/login", methods=["POST"])
 def login():
     session = SessionLocal()
-    data = request.json
-    email = data.get("email")
-    password = data.get("password")
+    try:
+        data = request.get_json()
+        email = data.get("email")
+        password = data.get("password")
 
-    user = session.query(User).filter_by(email=email).first()
-    if not user or not bcrypt.checkpw(password.encode(), user.password_hash.encode()):
-        return jsonify({"error": "Invalid credentials"}), 401
-    return jsonify({
-        "message": "Login successful",
-        "user_id": user.id,
-        "name": user.name,
-        "restaurant": user.restaurant
-    })
+        user = session.query(User).filter_by(email=email).first()
+        if not user:
+            return jsonify({"error": "No such account"}), 404
+        if not bcrypt.checkpw(password.encode(), user.password_hash.encode()):
+            return jsonify({"error": "Invalid credentials"}), 401
+
+        return jsonify({
+            "message": "Login successful",
+            "user_id": user.id,
+            "name": user.name,
+            "restaurant": user.restaurant
+        })
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        session.close()
 
 @app.route("/api/buy", methods=["POST"])
 def buy():

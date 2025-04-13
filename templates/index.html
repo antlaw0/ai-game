@@ -1,13 +1,68 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Game</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login - Cooking Game</title>
+  <link rel="stylesheet" href="/static/styles.css" />
 </head>
 <body>
-    <h1>Welcome to the AI Game!</h1>
-    <a href="{{ url_for('game') }}">Start Game</a>
+  <div class="login-container">
+    <h1>🍳 Welcome to the Cooking Game!</h1>
+    <p>Enter your email and password to sign in or create a new account.</p>
+
+    <form id="authForm">
+      <label for="email">Email:</label><br />
+      <input type="email" id="email" name="email" required /><br />
+
+      <label for="password">Password:</label><br />
+      <input type="password" id="password" name="password" required /><br />
+
+      <button type="submit">Continue</button>
+    </form>
+
+    <div id="authMessage" style="margin-top: 1rem; color: red;"></div>
+  </div>
+
+  <script>
+    const form = document.getElementById("authForm");
+    const msg = document.getElementById("authMessage");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+
+      // Try login first
+      let response = await fetch("/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+      });
+
+      let result = await response.json();
+
+      if (response.ok) {
+        localStorage.setItem("user_id", result.user_id);
+        window.location.href = "/game";
+      } else if (result.error === "Invalid credentials") {
+        // Register fallback
+        response = await fetch("/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password })
+        });
+        result = await response.json();
+        if (response.ok) {
+          localStorage.setItem("user_id", result.user_id);
+          window.location.href = "/game";
+        } else {
+          msg.innerText = "Signup failed: " + result.error;
+        }
+      } else {
+        msg.innerText = result.error;
+      }
+    });
+  </script>
 </body>
 </html>
