@@ -2,61 +2,57 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Login - Cooking Game</title>
   <link rel="stylesheet" href="/static/styles.css" />
 </head>
 <body>
   <div class="login-container">
-    <h1>Login or Register</h1>
+    <h1>🍳 Welcome to the Cooking Game!</h1>
+    <p>Login with your account below.</p>
 
-    <form id="authForm">
-      <label>Email:</label><br />
-      <input type="email" id="email" required /><br />
-      <label>Password:</label><br />
-      <input type="password" id="password" required /><br />
-      <button type="submit">Submit</button>
+    <form id="loginForm">
+      <label for="email">Email:</label><br />
+      <input type="email" id="email" name="email" required /><br />
+
+      <label for="password">Password:</label><br />
+      <input type="password" id="password" name="password" required /><br />
+
+      <button type="submit">Login</button>
     </form>
 
-    <div id="authMessage" style="margin-top: 10px;"></div>
+    <p style="margin-top: 1rem;">Don't have an account? <a href="/register-page">Create one</a></p>
+    <div id="loginMessage" style="margin-top: 1rem; color: red;"></div>
   </div>
 
   <script>
-    const form = document.getElementById("authForm");
-    const msg = document.getElementById("authMessage");
+    const loginForm = document.getElementById("loginForm");
+    const msg = document.getElementById("loginMessage");
 
-    form.addEventListener("submit", async (e) => {
+    loginForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const email = document.getElementById("email").value;
       const password = document.getElementById("password").value;
 
-      // Try login first
-      let response = await fetch("/login", {
+      const response = await fetch("/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password })
       });
 
-      let result = await response.json();
+      const result = await response.json();
 
       if (response.ok) {
         localStorage.setItem("user_id", result.user_id);
         window.location.href = "/game";
-      } else if (result.error === "Invalid credentials") {
-        // Register fallback
-        response = await fetch("/register", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password })
-        });
-        result = await response.json();
-        if (response.ok) {
-          localStorage.setItem("user_id", result.user_id);
-          window.location.href = "/game";
-        } else {
-          msg.innerText = "Signup failed: " + result.error;
-        }
       } else {
-        msg.innerText = result.error;
+        if (result.error === "Invalid credentials") {
+          msg.innerText = "Incorrect password. Please try again.";
+        } else if (result.error === "No such account") {
+          msg.innerHTML = "No account found. <a href='/register-page'>Create one?</a>";
+        } else {
+          msg.innerText = result.error;
+        }
       }
     });
   </script>

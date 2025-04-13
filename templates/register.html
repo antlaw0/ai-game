@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Create Account - Cooking Game</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="login-container">
+    <h1>Create Your Cooking Game Account</h1>
+
+    <form id="registerForm">
+      <label for="email">Email:</label><br />
+      <input type="email" id="email" name="email" required /><br />
+
+      <label for="password">Enter desired password:</label><br />
+      <input type="password" id="password" name="password" required /><br />
+
+      <label for="confirm">Confirm desired password:</label><br />
+      <input type="password" id="confirm" name="confirm" required /><br />
+
+      <button type="submit">Create Account</button>
+    </form>
+
+    <p style="margin-top: 1rem;">Already have an account? <a href="/">Login here</a></p>
+    <div id="registerMessage" style="margin-top: 1rem; color: red;"></div>
+  </div>
+
+  <script>
+    const registerForm = document.getElementById("registerForm");
+    const msg = document.getElementById("registerMessage");
+
+    registerForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      const confirm = document.getElementById("confirm").value;
+
+      const passwordValid = /^(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*])[A-Za-z\\d!@#$%^&*]{8,}$/.test(password);
+
+      if (!passwordValid) {
+        msg.innerText = "Password must be at least 8 characters, contain a number, uppercase letter, and special character.";
+        return;
+      }
+
+      if (password !== confirm) {
+        msg.innerText = "Passwords do not match.";
+        return;
+      }
+
+      const response = await fetch("/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        msg.style.color = "green";
+        msg.innerText = "Account created! Redirecting to login...";
+        setTimeout(() => window.location.href = "/", 1500);
+      } else if (result.error.includes("already registered")) {
+        msg.innerText = "An account with this email already exists.";
+      } else {
+        msg.innerText = result.error;
+      }
+    });
+  </script>
+</body>
+</html>
