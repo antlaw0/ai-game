@@ -191,6 +191,9 @@ def chat():
             session.commit()
 
         history = (state.log or "").strip().split("\n\n")[-3:]
+        separator = '\n\n'  # Fix: Define separator outside f-string
+        history_str = separator.join(history)  # Fix: Create formatted string first
+
         inventory_dict = json.loads(state.inventory or '{}')
         inventory_str = "\n".join(f"- {k}: {v}" for k, v in inventory_dict.items())
 
@@ -202,7 +205,7 @@ Inventory:
 {inventory_str or 'None'}
 
 Recent Interactions:
-{'\n\n'.join(history)}"""
+{history_str}"""  # Now using pre-formatted history_str
 
         headers = {
             "Authorization": f"Bearer {API_KEY}",
