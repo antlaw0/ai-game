@@ -4,3 +4,4 @@ Flask-SQLAlchemy==3.1.1
 SQLAlchemy==2.0.39
 requests==2.32.3
 gunicorn==21.2.0  # Required by Render to run the app
+bcrypt == 4.3.0
