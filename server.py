@@ -70,7 +70,6 @@ def index():
 def login_page():
     return render_template("login.html")
 
-
 @app.route("/game")
 def game():
     return render_template("game.html")
@@ -105,7 +104,12 @@ def login():
     user = session.query(User).filter_by(email=email).first()
     if not user or not bcrypt.checkpw(password.encode(), user.password_hash.encode()):
         return jsonify({"error": "Invalid credentials"}), 401
-    return jsonify({"message": "Login successful", "user_id": user.id, "name": user.name, "restaurant": user.restaurant})
+    return jsonify({
+        "message": "Login successful",
+        "user_id": user.id,
+        "name": user.name,
+        "restaurant": user.restaurant
+    })
 
 @app.route("/api/buy", methods=["POST"])
 def buy():
@@ -113,7 +117,7 @@ def buy():
     try:
         data = request.json
         user_id = data.get("user_id")
-        items = data.get("items")  # List of {name, quantity, price}
+        items = data.get("items")
 
         state = session.query(GameState).filter_by(user_id=user_id).first()
         if not state:
@@ -136,7 +140,11 @@ def buy():
         state.inventory = json.dumps(inventory)
         session.commit()
 
-        return jsonify({"message": "Items purchased", "money": state.money, "inventory": inventory})
+        return jsonify({
+            "message": "Items purchased",
+            "money": state.money,
+            "inventory": inventory
+        })
 
     except Exception as e:
         traceback.print_exc()
@@ -167,14 +175,15 @@ def chat():
         inventory_dict = json.loads(state.inventory or '{}')
         inventory_str = "\n".join(f"- {k}: {v}" for k, v in inventory_dict.items())
 
-        context = f"""
-Player Name: {user.name or 'Unknown'}
+        context = f"""Player Name: {user.name or 'Unknown'}
 Restaurant: {user.restaurant or 'Unknown'}
 Day: {state.day}
 Money: ${state.money:.2f}
-Inventory:\n{inventory_str or 'None'}
+Inventory:
+{inventory_str or 'None'}
 
-Recent Interactions:\n" + "\n\n".join(history)
+Recent Interactions:
+{'\n\n'.join(history)}"""
 
         headers = {
             "Authorization": f"Bearer {API_KEY}",
