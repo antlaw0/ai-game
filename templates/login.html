@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Login - Cooking Game</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="login-container">
+    <h1>Login or Register</h1>
+
+    <form id="authForm">
+      <label>Email:</label><br />
+      <input type="email" id="email" required /><br />
+      <label>Password:</label><br />
+      <input type="password" id="password" required /><br />
+      <button type="submit">Submit</button>
+    </form>
+
+    <div id="authMessage" style="margin-top: 10px;"></div>
+  </div>
+
+  <script>
+    const form = document.getElementById("authForm");
+    const msg = document.getElementById("authMessage");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+
+      // Try login first
+      let response = await fetch("/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+      });
+
+      let result = await response.json();
+
+      if (response.ok) {
+        localStorage.setItem("user_id", result.user_id);
+        window.location.href = "/game";
+      } else if (result.error === "Invalid credentials") {
+        // Register fallback
+        response = await fetch("/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password })
+        });
+        result = await response.json();
+        if (response.ok) {
+          localStorage.setItem("user_id", result.user_id);
+          window.location.href = "/game";
+        } else {
+          msg.innerText = "Signup failed: " + result.error;
+        }
+      } else {
+        msg.innerText = result.error;
+      }
+    });
+  </script>
+</body>
+</html>
