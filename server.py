@@ -1,3 +1,4 @@
+from dotenv import load_dotenv
 import os
 import json
 import traceback
@@ -7,6 +8,9 @@ from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 from sqlalchemy import create_engine, Column, Integer, String, Float, Text
 from sqlalchemy.orm import sessionmaker, declarative_base
+
+# ---------- LOAD ENVIRONMENT VARIABLES ----------
+load_dotenv()  # 👈 This loads variables from your .env file
 
 # ---------- SYSTEM PROMPT ----------
 system_info = """
@@ -32,7 +36,7 @@ DB_HOST = os.getenv("SUPABASE_DB_URL")
 DB_PORT = os.getenv("SUPABASE_DB_PORT", "5432")
 DB_NAME = os.getenv("SUPABASE_DB_NAME", "postgres")
 
-DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}?sslmode=require"
 
 # ---------- DATABASE ----------
 engine = create_engine(DATABASE_URL, echo=True)
@@ -191,21 +195,18 @@ def chat():
             session.commit()
 
         history = (state.log or "").strip().split("\n\n")[-3:]
-        separator = '\n\n'  # Fix: Define separator outside f-string
-        history_str = separator.join(history)  # Fix: Create formatted string first
-
         inventory_dict = json.loads(state.inventory or '{}')
         inventory_str = "\n".join(f"- {k}: {v}" for k, v in inventory_dict.items())
 
-        context = f"""Player Name: {user.name or 'Unknown'}
-Restaurant: {user.restaurant or 'Unknown'}
+        context = f"""
 Day: {state.day}
 Money: ${state.money:.2f}
 Inventory:
-{inventory_str or 'None'}
+{inventory_str}
 
-Recent Interactions:
-{history_str}"""  # Now using pre-formatted history_str
+Last actions:
+{chr(10).join(history)}
+"""
 
         headers = {
             "Authorization": f"Bearer {API_KEY}",
