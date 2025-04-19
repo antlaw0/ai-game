@@ -84,21 +84,30 @@ def register():
         email = data.get("email")
         password = data.get("password")
 
+        print("Attempting registration:", email)  # 👈 Add this log
+
         if not email or not password:
+            print("Missing email or password")     # 👈
             return jsonify({"error": "Email and password required"}), 400
 
         existing = session.query(User).filter_by(email=email).first()
         if existing:
+            print("Email already exists")          # 👈
             return jsonify({"error": "Email already registered"}), 409
 
         password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
         user = User(email=email, password_hash=password_hash)
         session.add(user)
         session.commit()
+
+        print("Registration successful:", user.id)  # 👈
+
         return jsonify({"message": "User registered", "user_id": user.id})
+
     except Exception as e:
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
+
     finally:
         session.close()
 
