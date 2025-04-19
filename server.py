@@ -30,13 +30,7 @@ Respond like a game master. Stay immersive and do not break character.
 
 # ---------- ENVIRONMENT ----------
 API_KEY = os.getenv("REMOVED_SECRET")
-DB_USER = os.getenv("SUPABASE_DB_USER", "postgres")
-DB_PASSWORD = os.getenv("SUPABASE_DB_PASSWORD")
-DB_HOST = os.getenv("SUPABASE_DB_URL")
-DB_PORT = os.getenv("SUPABASE_DB_PORT", "5432")
-DB_NAME = os.getenv("SUPABASE_DB_NAME", "postgres")
-
-DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}?sslmode=require"
+DATABASE_URL = os.getenv("NEON_DB_URL")
 
 # ---------- DATABASE ----------
 engine = create_engine(DATABASE_URL, echo=True)
