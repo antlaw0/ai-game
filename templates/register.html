@@ -33,38 +33,50 @@
 
     registerForm.addEventListener("submit", async (e) => {
       e.preventDefault();
+
       const email = document.getElementById("email").value;
       const password = document.getElementById("password").value;
       const confirm = document.getElementById("confirm").value;
 
-      const passwordValid = /^(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*])[A-Za-z\\d!@#$%^&*]{8,}$/.test(password);
+      // Validate password strength
+      let reasons = [];
+      if (password.length < 8) reasons.push("at least 8 characters");
+      if (!/[A-Z]/.test(password)) reasons.push("an uppercase letter");
+      if (!/\d/.test(password)) reasons.push("a number");
+      if (!/[!@#$%^&*]/.test(password)) reasons.push("a special character");
 
-      if (!passwordValid) {
-        msg.innerText = "Password must be at least 8 characters, contain a number, uppercase letter, and special character.";
+      if (reasons.length > 0) {
+        msg.innerText = "Password must contain: " + reasons.join(", ");
         return;
       }
 
+      // Confirm password match
       if (password !== confirm) {
         msg.innerText = "Passwords do not match.";
         return;
       }
 
-      const response = await fetch("/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password })
-      });
+      try {
+        const response = await fetch("/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password })
+        });
 
-      const result = await response.json();
+        const result = await response.json();
 
-      if (response.ok) {
-        msg.style.color = "green";
-        msg.innerText = "Account created! Redirecting to login...";
-        setTimeout(() => window.location.href = "/", 1500);
-      } else if (result.error.includes("already registered")) {
-        msg.innerText = "An account with this email already exists.";
-      } else {
-        msg.innerText = result.error;
+        if (response.ok) {
+          msg.style.color = "green";
+          msg.innerText = "Account created! Redirecting to login...";
+          setTimeout(() => window.location.href = "/", 1500);
+        } else if (result.error && result.error.includes("already registered")) {
+          msg.innerText = "An account with this email already exists.";
+        } else {
+          msg.innerText = result.error || "Something went wrong.";
+        }
+      } catch (err) {
+        msg.innerText = "Error connecting to server.";
+        console.error(err);
       }
     });
   </script>
