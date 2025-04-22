@@ -29,6 +29,7 @@ Respond like a game master. Stay immersive and do not break character.
 """
 
 # ---------- ENVIRONMENT ----------
+REMOVED_SECRET = os.getenv("REMOVED_SECRET")
 API_KEY = os.getenv("REMOVED_SECRET")
 DATABASE_URL = os.getenv("NEON_DB_URL")
 
@@ -217,7 +218,7 @@ Last actions:
         }
 
         payload = {
-            "model": "meta-llama/Llama-3-70B-Instruct",
+            "model": REMOVED_SECRET,
             "messages": [
                 {"role": "system", "content": system_info},
                 {"role": "user", "content": context + "\n\nPlayer says: " + user_input}
