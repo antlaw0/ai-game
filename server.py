@@ -8,7 +8,7 @@ from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 from sqlalchemy import create_engine, Column, Integer, String, Float, Text
 from sqlalchemy.orm import sessionmaker, declarative_base
-
+from sqlalchemy.pool import NullPool
 # ---------- LOAD ENVIRONMENT VARIABLES ----------
 load_dotenv()  # 👈 This loads variables from your .env file
 
@@ -34,7 +34,7 @@ API_KEY = os.getenv("REMOVED_SECRET")
 DATABASE_URL = os.getenv("NEON_DB_URL")
 
 # ---------- DATABASE ----------
-engine = create_engine(DATABASE_URL, echo=True)
+engine = create_engine(DATABASE_URL, echo=True, pool_pre_ping=True, poolclass=NullPool)
 SessionLocal = sessionmaker(bind=engine)
 Base = declarative_base()
 
