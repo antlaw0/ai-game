@@ -2,11 +2,11 @@ import os, requests
 
 # Replace this with your actual API key
 API_KEY=os.getenv("TOGETHERAI_API_KEY") 
-
+TOGETHERAI_MODEL = os.getenv("TOGETHERAI_MODEL")
 url = "https://api.together.ai/v1/completions"
 headers = {"Authorization": f"Bearer {API_KEY}"}
 data = {
-    "model": "mistralai/Mixtral-8x7B-Instruct-v0.1",  # Use Mixtral chat model
+    "model": TOGETHERAI_MODEL,  # Use  model specified
     "prompt": "Describe a cyberpunk city at night.",
     "max_tokens": 200
 }

@@ -29,6 +29,7 @@ Respond like a game master. Stay immersive and do not break character.
 """
 
 # ---------- ENVIRONMENT ----------
+TOGETHERAI_MODEL = os.getenv("TOGETHERAI_MODEL")
 API_KEY = os.getenv("TOGETHERAI_API_KEY")
 DATABASE_URL = os.getenv("NEON_DB_URL")
 
@@ -217,7 +218,7 @@ Last actions:
         }
 
         payload = {
-            "model": "meta-llama/Llama-3-70B-Instruct",
+            "model": TOGETHERAI_MODEL,
             "messages": [
                 {"role": "system", "content": system_info},
                 {"role": "user", "content": context + "\n\nPlayer says: " + user_input}
