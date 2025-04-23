@@ -9,10 +9,10 @@ from flask_cors import CORS
 from sqlalchemy import create_engine, Column, Integer, String, Float, Text
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.pool import NullPool
-# ---------- LOAD ENVIRONMENT VARIABLES ----------
-load_dotenv()  # 👈 This loads variables from your .env file
 
-# ---------- SYSTEM PROMPT ----------
+load_dotenv()
+
+# System prompt for the main AI model
 system_info = """
 You are running a text-based cooking game. The player starts with $200 and a small food cart.
 They can buy ingredients and cooking equipment from a store at the start of each day.
@@ -28,12 +28,13 @@ You must consider:
 Respond like a game master. Stay immersive and do not break character.
 """
 
-# ---------- ENVIRONMENT ----------
+# Environment variables
 REMOVED_SECRET = os.getenv("REMOVED_SECRET")
+TOGETHERAI_PARSER_MODEL = os.getenv("TOGETHERAI_PARSER_MODEL")
 API_KEY = os.getenv("REMOVED_SECRET")
 DATABASE_URL = os.getenv("NEON_DB_URL")
 
-# ---------- DATABASE ----------
+# Database setup
 engine = create_engine(DATABASE_URL, echo=True, pool_pre_ping=True, poolclass=NullPool)
 SessionLocal = sessionmaker(bind=engine)
 Base = declarative_base()
@@ -57,7 +58,7 @@ class GameState(Base):
 
 Base.metadata.create_all(bind=engine)
 
-# ---------- APP ----------
+# Flask app
 app = Flask(__name__)
 CORS(app)
 
@@ -85,15 +86,12 @@ def register():
         email = data.get("email")
         password = data.get("password")
 
-        print("Attempting registration:", email)  # 👈 Add this log
-
+        print("Attempting registration:", email)
         if not email or not password:
-            print("Missing email or password")     # 👈
             return jsonify({"error": "Email and password required"}), 400
 
         existing = session.query(User).filter_by(email=email).first()
         if existing:
-            print("Email already exists")          # 👈
             return jsonify({"error": "Email already registered"}), 409
 
         password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
@@ -101,14 +99,10 @@ def register():
         session.add(user)
         session.commit()
 
-        print("Registration successful:", user.id)  # 👈
-
         return jsonify({"message": "User registered", "user_id": user.id})
-
     except Exception as e:
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
-
     finally:
         session.close()
 
@@ -172,13 +166,49 @@ def buy():
             "money": state.money,
             "inventory": inventory
         })
-
     except Exception as e:
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
-
     finally:
         session.close()
+
+# 🧠 PARSER FUNCTION
+def parse_game_state(ai_response):
+    prompt = f"""
+You are a parser. Extract the following game state from this response and output JSON:
+- day: current day number
+- money: numeric value
+- inventory: object with ingredient names and quantities
+
+AI response:
+\"\"\"
+{ai_response}
+\"\"\"
+
+Respond in JSON:
+{{"day": 2, "money": 155.5, "inventory": {{"eggs": 3, "bacon": 1}}}}
+"""
+    headers = {
+        "Authorization": f"Bearer {API_KEY}",
+        "Content-Type": "application/json"
+    }
+
+    payload = {
+        "model": TOGETHERAI_PARSER_MODEL,
+        "messages": [
+            {"role": "system", "content": "You are a JSON data extractor."},
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.1
+    }
+
+    try:
+        response = requests.post("https://api.together.ai/v1/chat/completions", headers=headers, json=payload)
+        parsed = response.json()["choices"][0]["message"]["content"]
+        return json.loads(parsed)
+    except Exception as e:
+        print("Parsing failed:", e)
+        return None
 
 @app.route("/api/chat", methods=["POST"])
 def chat():
@@ -235,6 +265,14 @@ Last actions:
         new_log = f"Player: {user_input}\nAI: {ai_response}"
         combined_log = (state.log or "") + "\n\n" + new_log
         state.log = combined_log.strip()[-3000:]
+
+        # 🔍 Parse updated game state from response
+        parsed = parse_game_state(ai_response)
+        if parsed:
+            state.day = parsed.get("day", state.day)
+            state.money = parsed.get("money", state.money)
+            state.inventory = json.dumps(parsed.get("inventory", inventory_dict))
+
         session.commit()
 
         return jsonify({
@@ -243,7 +281,7 @@ Last actions:
             "restaurant": user.restaurant,
             "day": state.day,
             "money": state.money,
-            "inventory": inventory_dict
+            "inventory": json.loads(state.inventory or '{}')
         })
 
     except Exception as e:
