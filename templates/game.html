@@ -9,7 +9,9 @@
 <body>
   <div class="game-container">
     <h1>Cooking Game</h1>
-    
+
+    <button onclick="logout()" style="float:right;">Logout</button>
+
     <div class="player-info">
       <p><strong>Player:</strong> <span id="playerName">-</span></p>
       <p><strong>Restaurant:</strong> <span id="restaurantName">-</span></p>
@@ -32,6 +34,74 @@
     </form>
   </div>
 
-  <script src="/static/script.js"></script>
+  <script>
+    const chatForm = document.getElementById("chatForm");
+    const chatLog = document.getElementById("chatLog");
+    const messageInput = document.getElementById("messageInput");
+
+    const playerName = document.getElementById("playerName");
+    const restaurantName = document.getElementById("restaurantName");
+    const gameDay = document.getElementById("gameDay");
+    const playerMoney = document.getElementById("playerMoney");
+    const inventoryList = document.getElementById("inventoryList");
+
+    const userId = localStorage.getItem("user_id");
+
+    if (!userId) {
+      window.location.href = "/login-page";
+    }
+
+    function logout() {
+      localStorage.removeItem("user_id");
+      window.location.href = "/login-page";
+    }
+
+    chatForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const message = messageInput.value;
+      messageInput.value = "";
+
+      const entry = document.createElement("p");
+      entry.innerHTML = `<strong>You:</strong> ${message}`;
+      chatLog.appendChild(entry);
+
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message, user_id: userId }),
+      });
+
+      const result = await response.json();
+
+      if (result.error) {
+        chatLog.innerHTML += `<p style="color:red;"><strong>Error:</strong> ${result.error}</p>`;
+        return;
+      }
+
+      const aiEntry = document.createElement("p");
+      aiEntry.innerHTML = `<strong>AI:</strong> ${result.response}`;
+      chatLog.appendChild(aiEntry);
+
+      // Update info
+      playerName.textContent = result.player || "-";
+      restaurantName.textContent = result.restaurant || "-";
+      gameDay.textContent = result.day || "1";
+      playerMoney.textContent = result.money?.toFixed(2) || "200.00";
+
+      // Update inventory list
+      inventoryList.innerHTML = "";
+      const inv = result.inventory || {};
+      const keys = Object.keys(inv);
+      if (keys.length === 0) {
+        inventoryList.innerHTML = "<li>None</li>";
+      } else {
+        keys.forEach((key) => {
+          const item = document.createElement("li");
+          item.textContent = `${key}: ${inv[key]}`;
+          inventoryList.appendChild(item);
+        });
+      }
+    });
+  </script>
 </body>
 </html>
