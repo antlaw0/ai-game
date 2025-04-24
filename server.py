@@ -242,6 +242,7 @@ Last actions:
 {chr(10).join(history)}
 """
 
+        # Step 1: Main AI response
         headers = {
             "Authorization": f"Bearer {API_KEY}",
             "Content-Type": "application/json"
@@ -257,24 +258,45 @@ Last actions:
         }
 
         response = requests.post("https://api.together.ai/v1/chat/completions", headers=headers, json=payload)
-
         if response.status_code != 200:
             return jsonify({"error": "AI request failed", "details": response.text}), 500
 
         ai_response = response.json()["choices"][0]["message"]["content"]
+
+        # Step 2: Use parser model to extract updated data
+        parser_payload = {
+            "model": "mistralai/Mixtral-8x7B-Instruct-v0.1",
+            "messages": [
+                {"role": "system", "content": "Extract JSON data from the AI's message. Output format:\n"
+                                              "{\n  \"money\": float,\n  \"day\": int,\n  \"inventory\": {\"item\": quantity, ...}\n}"},
+                {"role": "user", "content": ai_response}
+            ],
+            "temperature": 0.0
+        }
+
+        parser_response = requests.post("https://api.together.ai/v1/chat/completions", headers=headers, json=parser_payload)
+        parsed_data = parser_response.json()["choices"][0]["message"]["content"]
+
+        # Step 3: Try parsing and updating the DB
+        try:
+            parsed_json = json.loads(parsed_data)
+            if "money" in parsed_json:
+                state.money = float(parsed_json["money"])
+            if "day" in parsed_json:
+                state.day = int(parsed_json["day"])
+            if "inventory" in parsed_json:
+                state.inventory = json.dumps(parsed_json["inventory"])
+        except Exception as parse_error:
+            print("Parser AI returned invalid JSON:", parsed_data)
+            print("Parse error:", parse_error)
+
+        # Step 4: Save updated log
         new_log = f"Player: {user_input}\nAI: {ai_response}"
         combined_log = (state.log or "") + "\n\n" + new_log
         state.log = combined_log.strip()[-3000:]
-
-        # 🔍 Parse updated game state from response
-        parsed = parse_game_state(ai_response)
-        if parsed:
-            state.day = parsed.get("day", state.day)
-            state.money = parsed.get("money", state.money)
-            state.inventory = json.dumps(parsed.get("inventory", inventory_dict))
-
         session.commit()
 
+        # Step 5: Send response back to frontend
         return jsonify({
             "response": ai_response,
             "player": user.name,
