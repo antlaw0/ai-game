@@ -7,6 +7,8 @@
   <link rel="stylesheet" href="/static/styles.css" />
 </head>
 <body>
+<div id="header"></div>
+
   <div class="game-container">
     <h1>Cooking Game</h1>
 
@@ -35,6 +37,20 @@
   </div>
 
   <script>
+  
+    // Insert Header
+  fetch('/static/header.html')
+    .then(res => res.text())
+    .then(data => {
+      document.getElementById('header').innerHTML = data;
+    });
+
+  // Insert Footer
+  fetch('/static/footer.html')
+    .then(res => res.text())
+    .then(data => {
+      document.getElementById('footer').innerHTML = data;
+    });
     const chatForm = document.getElementById("chatForm");
     const chatLog = document.getElementById("chatLog");
     const messageInput = document.getElementById("messageInput");
@@ -103,5 +119,7 @@
       }
     });
   </script>
+  <div id="footer"></div>
+
 </body>
 </html>

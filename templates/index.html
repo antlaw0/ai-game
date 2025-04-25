@@ -6,7 +6,11 @@
   <title>Login - Cooking Game</title>
   <link rel="stylesheet" href="/static/styles.css" />
 </head>
+
+
 <body>
+<div id="header"></div>
+
   <div class="login-container">
     <h1>🍳 Welcome to the Cooking Game!</h1>
     <p>Enter your email and password to sign in or create a new account.</p>
@@ -20,11 +24,31 @@
 
       <button type="submit">Continue</button>
     </form>
+<br>
+or
+<br>
+<a href="/register-page">Create an account</a>
+
+<br>
 
     <div id="authMessage" style="margin-top: 1rem; color: red;"></div>
   </div>
 
   <script>
+  
+    // Insert Header
+  fetch('/static/header.html')
+    .then(res => res.text())
+    .then(data => {
+      document.getElementById('header').innerHTML = data;
+    });
+
+  // Insert Footer
+  fetch('/static/footer.html')
+    .then(res => res.text())
+    .then(data => {
+      document.getElementById('footer').innerHTML = data;
+    });  
     const form = document.getElementById("authForm");
     const msg = document.getElementById("authMessage");
 
@@ -64,5 +88,6 @@
       }
     });
   </script>
+<div id="footer"></div>
 </body>
 </html>
