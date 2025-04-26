@@ -9,10 +9,16 @@ from flask_cors import CORS
 from sqlalchemy import create_engine, Column, Integer, String, Float, Text
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.pool import NullPool
+import sib_api_v3_sdk
+from sib_api_v3_sdk.rest import ApiException
+from itsdangerous import URLSafeTimedSerializer
+
+# Secure token for password reset
+s = URLSafeTimedSerializer(os.getenv("REMOVED_SECRET"))
 
 load_dotenv()
 
-# System prompt for the main AI model
+# ---------- SYSTEM PROMPT ----------
 system_info = """
 You are running a text-based cooking game. The player starts with $200 and a small food cart.
 They can buy ingredients and cooking equipment from a store at the start of each day.
@@ -28,13 +34,14 @@ You must consider:
 Respond like a game master. Stay immersive and do not break character.
 """
 
-# Environment variables
+# ---------- ENVIRONMENT VARIABLES ----------
 REMOVED_SECRET = os.getenv("REMOVED_SECRET")
 TOGETHERAI_PARSER_MODEL = os.getenv("TOGETHERAI_PARSER_MODEL")
 API_KEY = os.getenv("REMOVED_SECRET")
 DATABASE_URL = os.getenv("NEON_DB_URL")
+REMOVED_SECRET = os.getenv("REMOVED_SECRET")
 
-# Database setup
+# ---------- DATABASE SETUP ----------
 engine = create_engine(DATABASE_URL, echo=True, pool_pre_ping=True, poolclass=NullPool)
 SessionLocal = sessionmaker(bind=engine)
 Base = declarative_base()
@@ -58,7 +65,7 @@ class GameState(Base):
 
 Base.metadata.create_all(bind=engine)
 
-# Flask app
+# ---------- FLASK APP ----------
 app = Flask(__name__)
 CORS(app)
 
@@ -86,7 +93,6 @@ def register():
         email = data.get("email")
         password = data.get("password")
 
-        print("Attempting registration:", email)
         if not email or not password:
             return jsonify({"error": "Email and password required"}), 400
 
@@ -98,7 +104,6 @@ def register():
         user = User(email=email, password_hash=password_hash)
         session.add(user)
         session.commit()
-
         return jsonify({"message": "User registered", "user_id": user.id})
     except Exception as e:
         traceback.print_exc()
@@ -145,17 +150,15 @@ def buy():
             return jsonify({"error": "Game state not found"}), 404
 
         inventory = json.loads(state.inventory or '{}')
-        total_cost = 0.0
+        total_cost = sum(int(item['quantity']) * float(item['price']) for item in items)
+
+        if total_cost > state.money:
+            return jsonify({"error": "Not enough funds"}), 400
 
         for item in items:
             name = item['name']
             qty = int(item['quantity'])
-            price = float(item['price'])
-            total_cost += qty * price
             inventory[name] = inventory.get(name, 0) + qty
-
-        if total_cost > state.money:
-            return jsonify({"error": "Not enough funds"}), 400
 
         state.money -= total_cost
         state.inventory = json.dumps(inventory)
@@ -171,44 +174,6 @@ def buy():
         return jsonify({"error": str(e)}), 500
     finally:
         session.close()
-
-# 🧠 PARSER FUNCTION
-def parse_game_state(ai_response):
-    prompt = f"""
-You are a parser. Extract the following game state from this response and output JSON:
-- day: current day number
-- money: numeric value
-- inventory: object with ingredient names and quantities
-
-AI response:
-\"\"\"
-{ai_response}
-\"\"\"
-
-Respond in JSON:
-{{"day": 2, "money": 155.5, "inventory": {{"eggs": 3, "bacon": 1}}}}
-"""
-    headers = {
-        "Authorization": f"Bearer {API_KEY}",
-        "Content-Type": "application/json"
-    }
-
-    payload = {
-        "model": TOGETHERAI_PARSER_MODEL,
-        "messages": [
-            {"role": "system", "content": "You are a JSON data extractor."},
-            {"role": "user", "content": prompt}
-        ],
-        "temperature": 0.1
-    }
-
-    try:
-        response = requests.post("https://api.together.ai/v1/chat/completions", headers=headers, json=payload)
-        parsed = response.json()["choices"][0]["message"]["content"]
-        return json.loads(parsed)
-    except Exception as e:
-        print("Parsing failed:", e)
-        return None
 
 @app.route("/api/chat", methods=["POST"])
 def chat():
@@ -242,7 +207,6 @@ Last actions:
 {chr(10).join(history)}
 """
 
-        # Step 1: Main AI response
         headers = {
             "Authorization": f"Bearer {API_KEY}",
             "Content-Type": "application/json"
@@ -263,9 +227,9 @@ Last actions:
 
         ai_response = response.json()["choices"][0]["message"]["content"]
 
-        # Step 2: Use parser model to extract updated data
+        # Parse data
         parser_payload = {
-            "model": "mistralai/Mixtral-8x7B-Instruct-v0.1",
+            "model": TOGETHERAI_PARSER_MODEL,
             "messages": [
                 {"role": "system", "content": "Extract JSON data from the AI's message. Output format:\n"
                                               "{\n  \"money\": float,\n  \"day\": int,\n  \"inventory\": {\"item\": quantity, ...}\n}"},
@@ -277,26 +241,20 @@ Last actions:
         parser_response = requests.post("https://api.together.ai/v1/chat/completions", headers=headers, json=parser_payload)
         parsed_data = parser_response.json()["choices"][0]["message"]["content"]
 
-        # Step 3: Try parsing and updating the DB
         try:
             parsed_json = json.loads(parsed_data)
-            if "money" in parsed_json:
-                state.money = float(parsed_json["money"])
-            if "day" in parsed_json:
-                state.day = int(parsed_json["day"])
-            if "inventory" in parsed_json:
-                state.inventory = json.dumps(parsed_json["inventory"])
-        except Exception as parse_error:
-            print("Parser AI returned invalid JSON:", parsed_data)
-            print("Parse error:", parse_error)
+            state.money = float(parsed_json.get("money", state.money))
+            state.day = int(parsed_json.get("day", state.day))
+            state.inventory = json.dumps(parsed_json.get("inventory", json.loads(state.inventory)))
+        except Exception as e:
+            print("Parser error:", e)
 
-        # Step 4: Save updated log
+        # Save log
         new_log = f"Player: {user_input}\nAI: {ai_response}"
         combined_log = (state.log or "") + "\n\n" + new_log
         state.log = combined_log.strip()[-3000:]
         session.commit()
 
-        # Step 5: Send response back to frontend
         return jsonify({
             "response": ai_response,
             "player": user.name,
@@ -305,11 +263,71 @@ Last actions:
             "money": state.money,
             "inventory": json.loads(state.inventory or '{}')
         })
-
     except Exception as e:
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
+    finally:
+        session.close()
 
+@app.route("/request-reset", methods=["POST"])
+def request_reset():
+    session = SessionLocal()
+    try:
+        data = request.get_json()
+        email = data.get("email")
+        user = session.query(User).filter_by(email=email).first()
+
+        if not user:
+            return jsonify({"error": "No account found with that email"}), 404
+
+        token = s.dumps(email, salt="password-reset-salt")
+        reset_link = f"{request.url_root}reset-password/{token}"
+
+        configuration = sib_api_v3_sdk.Configuration()
+        configuration.api_key['api-key'] = REMOVED_SECRET
+        api_instance = sib_api_v3_sdk.TransactionalEmailsApi(sib_api_v3_sdk.ApiClient(configuration))
+
+        email_obj = {
+            "sender": {"name": "Cooking Game", "email": os.getenv("SMTP_USERNAME")},
+            "to": [{"email": email}],
+            "subject": "Reset Your Password",
+            "htmlContent": f"<p>Click the link to reset your password:</p><p><a href='{reset_link}'>Reset Password</a></p>"
+        }
+
+        api_instance.send_transac_email(email_obj)
+        return jsonify({"message": "Password reset email sent!"})
+    except ApiException as e:
+        print("Brevo error:", e)
+        return jsonify({"error": "Failed to send reset email"}), 500
+    finally:
+        session.close()
+
+@app.route("/reset-password/<token>", methods=["GET", "POST"])
+def reset_password(token):
+    session = SessionLocal()
+    try:
+        if request.method == "GET":
+            return render_template("reset_form.html", token=token)
+
+        data = request.form
+        password = data.get("password")
+        confirm = data.get("confirm")
+
+        if password != confirm or len(password) < 8:
+            return "Passwords must match and be at least 8 characters."
+
+        email = s.loads(token, salt="password-reset-salt", max_age=3600)
+        user = session.query(User).filter_by(email=email).first()
+
+        if user:
+            user.password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+            session.commit()
+            return "Password reset successful. You can now log in."
+
+        return "Invalid token or user not found."
+    except Exception as e:
+        traceback.print_exc()
+        return "Something went wrong."
     finally:
         session.close()
 
