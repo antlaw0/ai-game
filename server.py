@@ -279,39 +279,26 @@ Last actions:
     finally:
         session.close()
 
-# ---------- REQUEST RESET ----------
 @app.route("/request-reset", methods=["POST"])
 def request_reset():
     session = SessionLocal()
     try:
         data = request.get_json()
+        print("Received forgot password data:", data)  # ?? ADD THIS LINE
         email = data.get("email")
+        
+        if not email:
+            print("No email provided")  # ?? ADD THIS LINE
+            return jsonify({"error": "No email provided"}), 400
+
         user = session.query(User).filter_by(email=email).first()
 
         if not user:
+            print("No user found with that email")  # ?? ADD THIS LINE
             return jsonify({"error": "No account found with that email"}), 404
 
-        token = s.dumps(email, salt="password-reset-salt")
-        reset_link = f"{request.url_root}reset-password/{token}"
+        # Rest of code...
 
-        configuration = sib_api_v3_sdk.Configuration()
-        configuration.api_key['api-key'] = REMOVED_SECRET
-        api_instance = sib_api_v3_sdk.TransactionalEmailsApi(sib_api_v3_sdk.ApiClient(configuration))
-
-        email_obj = {
-            "sender": {"name": "Cooking Game", "email": os.getenv("SMTP_USERNAME")},
-            "to": [{"email": email}],
-            "subject": "Reset Your Password",
-            "htmlContent": f"<p>Click here to reset your password:</p><p><a href='{reset_link}'>Reset Password</a></p>"
-        }
-
-        api_instance.send_transac_email(email_obj)
-        return jsonify({"message": "Password reset email sent!"})
-    except ApiException as e:
-        print("Brevo error:", e)
-        return jsonify({"error": "Failed to send reset email"}), 500
-    finally:
-        session.close()
 
 # ---------- RESET PASSWORD ----------
 @app.route("/reset-password/<token>", methods=["GET", "POST"])
