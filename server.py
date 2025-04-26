@@ -284,20 +284,62 @@ def request_reset():
     session = SessionLocal()
     try:
         data = request.get_json()
-        print("Received forgot password data:", data)  # ?? ADD THIS LINE
+        print("Received forgot password data:", data)  # Debug log
+
         email = data.get("email")
-        
         if not email:
-            print("No email provided")  # ?? ADD THIS LINE
+            print("No email provided")
             return jsonify({"error": "No email provided"}), 400
 
         user = session.query(User).filter_by(email=email).first()
-
         if not user:
-            print("No user found with that email")  # ?? ADD THIS LINE
+            print("No user found with that email")
             return jsonify({"error": "No account found with that email"}), 404
 
-        # Rest of code...
+        # Generate reset token
+        token = s.dumps(email, salt="password-reset-salt")
+        reset_link = f"{request.url_root}reset-password/{token}"
+        print("Generated reset link:", reset_link)
+
+        # Setup Brevo
+        configuration = sib_api_v3_sdk.Configuration()
+        configuration.api_key['api-key'] = REMOVED_SECRET
+        api_instance = sib_api_v3_sdk.TransactionalEmailsApi(sib_api_v3_sdk.ApiClient(configuration))
+
+        sender_email = os.getenv("SMTP_USERNAME")
+        if not sender_email:
+            print("SMTP_USERNAME missing!")
+            return jsonify({"error": "Server misconfiguration (no sender email)"}), 500
+
+        email_obj = {
+            "sender": {"name": "Cooking Game", "email": sender_email},
+            "to": [{"email": email}],
+            "subject": "Reset Your Cooking Game Password",
+            "htmlContent": f"""
+                <p>Hello,</p>
+                <p>Click the link below to reset your password:</p>
+                <p><a href="{reset_link}">{reset_link}</a></p>
+                <p>This link will expire in 1 hour.</p>
+            """
+        }
+
+        # Send email
+        api_instance.send_transac_email(email_obj)
+        print("Reset email sent successfully.")
+
+        return jsonify({"message": "Password reset email sent!"})
+
+    except ApiException as e:
+        print("Brevo API error:", e)
+        return jsonify({"error": "Failed to send reset email"}), 500
+
+    except Exception as e:
+        print("Unexpected error:", e)
+        traceback.print_exc()
+        return jsonify({"error": "An unexpected error occurred"}), 500
+
+    finally:
+        session.close()
 
 
 # ---------- RESET PASSWORD ----------
