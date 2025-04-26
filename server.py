@@ -13,9 +13,7 @@ import sib_api_v3_sdk
 from sib_api_v3_sdk.rest import ApiException
 from itsdangerous import URLSafeTimedSerializer
 
-# Secure token for password reset
-s = URLSafeTimedSerializer(os.getenv("REMOVED_SECRET"))
-
+# ---------- LOAD ENVIRONMENT VARIABLES ----------
 load_dotenv()
 
 # ---------- SYSTEM PROMPT ----------
@@ -34,14 +32,18 @@ You must consider:
 Respond like a game master. Stay immersive and do not break character.
 """
 
-# ---------- ENVIRONMENT VARIABLES ----------
+# ---------- ENVIRONMENT ----------
 REMOVED_SECRET = os.getenv("REMOVED_SECRET")
 TOGETHERAI_PARSER_MODEL = os.getenv("TOGETHERAI_PARSER_MODEL")
 API_KEY = os.getenv("REMOVED_SECRET")
 DATABASE_URL = os.getenv("NEON_DB_URL")
 REMOVED_SECRET = os.getenv("REMOVED_SECRET")
+REMOVED_SECRET = os.getenv("REMOVED_SECRET")
 
-# ---------- DATABASE SETUP ----------
+# Token generator
+s = URLSafeTimedSerializer(REMOVED_SECRET)
+
+# ---------- DATABASE ----------
 engine = create_engine(DATABASE_URL, echo=True, pool_pre_ping=True, poolclass=NullPool)
 SessionLocal = sessionmaker(bind=engine)
 Base = declarative_base()
@@ -65,7 +67,7 @@ class GameState(Base):
 
 Base.metadata.create_all(bind=engine)
 
-# ---------- FLASK APP ----------
+# ---------- APP ----------
 app = Flask(__name__)
 CORS(app)
 
@@ -81,10 +83,15 @@ def login_page():
 def register_page():
     return render_template("register.html")
 
+@app.route("/forgot-password")
+def forgot_password():
+    return render_template("forgot_password.html")
+
 @app.route("/game")
 def game():
     return render_template("game.html")
 
+# ---------- ACCOUNT REGISTRATION ----------
 @app.route("/register", methods=["POST"])
 def register():
     session = SessionLocal()
@@ -111,6 +118,7 @@ def register():
     finally:
         session.close()
 
+# ---------- LOGIN ----------
 @app.route("/login", methods=["POST"])
 def login():
     session = SessionLocal()
@@ -137,6 +145,7 @@ def login():
     finally:
         session.close()
 
+# ---------- BUY API ----------
 @app.route("/api/buy", methods=["POST"])
 def buy():
     session = SessionLocal()
@@ -175,6 +184,7 @@ def buy():
     finally:
         session.close()
 
+# ---------- CHAT API ----------
 @app.route("/api/chat", methods=["POST"])
 def chat():
     session = SessionLocal()
@@ -227,7 +237,7 @@ Last actions:
 
         ai_response = response.json()["choices"][0]["message"]["content"]
 
-        # Parse data
+        # Parse
         parser_payload = {
             "model": TOGETHERAI_PARSER_MODEL,
             "messages": [
@@ -249,7 +259,7 @@ Last actions:
         except Exception as e:
             print("Parser error:", e)
 
-        # Save log
+        # Save logs
         new_log = f"Player: {user_input}\nAI: {ai_response}"
         combined_log = (state.log or "") + "\n\n" + new_log
         state.log = combined_log.strip()[-3000:]
@@ -269,6 +279,7 @@ Last actions:
     finally:
         session.close()
 
+# ---------- REQUEST RESET ----------
 @app.route("/request-reset", methods=["POST"])
 def request_reset():
     session = SessionLocal()
@@ -291,7 +302,7 @@ def request_reset():
             "sender": {"name": "Cooking Game", "email": os.getenv("SMTP_USERNAME")},
             "to": [{"email": email}],
             "subject": "Reset Your Password",
-            "htmlContent": f"<p>Click the link to reset your password:</p><p><a href='{reset_link}'>Reset Password</a></p>"
+            "htmlContent": f"<p>Click here to reset your password:</p><p><a href='{reset_link}'>Reset Password</a></p>"
         }
 
         api_instance.send_transac_email(email_obj)
@@ -302,12 +313,7 @@ def request_reset():
     finally:
         session.close()
 
-
-@app.route("/forgot-password")
-def forgot_password():
-    return render_template("forgot_password.html")
-
-
+# ---------- RESET PASSWORD ----------
 @app.route("/reset-password/<token>", methods=["GET", "POST"])
 def reset_password(token):
     session = SessionLocal()
