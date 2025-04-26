@@ -302,6 +302,12 @@ def request_reset():
     finally:
         session.close()
 
+
+@app.route("/forgot-password")
+def forgot_password():
+    return render_template("forgot_password.html")
+
+
 @app.route("/reset-password/<token>", methods=["GET", "POST"])
 def reset_password(token):
     session = SessionLocal()
