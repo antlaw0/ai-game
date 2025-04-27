@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="/static/styles.css" />
 </head>
 <body>
-<div id="header"></div>
+{% include 'header.html' %}
 <div class="centered-container">
 
   <div class="game-container">
@@ -36,22 +36,10 @@
       <button type="submit">Send</button>
     </form>
   </div>
+{% include 'footer.html' %}
 
   <script>
   
-    // Insert Header
-  fetch('/static/header.html')
-    .then(res => res.text())
-    .then(data => {
-      document.getElementById('header').innerHTML = data;
-    });
-
-  // Insert Footer
-  fetch('/static/footer.html')
-    .then(res => res.text())
-    .then(data => {
-      document.getElementById('footer').innerHTML = data;
-    });
     const chatForm = document.getElementById("chatForm");
     const chatLog = document.getElementById("chatLog");
     const messageInput = document.getElementById("messageInput");
