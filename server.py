@@ -377,6 +377,11 @@ def reset_password(token):
 def how_the_game_works():
     return render_template("how-the-game-works.html")
 
+@app.route("/home")
+def home():
+    return render_template("index.html")
+
+
 # ---------- RUN ----------
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
