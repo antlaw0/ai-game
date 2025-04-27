@@ -372,6 +372,11 @@ def reset_password(token):
     finally:
         session.close()
 
+
+@app.route("/how-the-game-works")
+def how_the_game_works():
+    return render_template("how-the-game-works.html")
+
 # ---------- RUN ----------
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
