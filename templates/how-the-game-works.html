@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>How the Game Works - Cooking Game</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+<div id="header"></div>
+<div class="centered-container">
+
+  <div class="content-container">
+    <h1>📚 How to Play</h1>
+
+    <h2>🎯 Objective</h2>
+    <p>Start with a small food stand and work your way up to owning bigger and better restaurants! Each day, you'll buy ingredients, cook four meals (breakfast, lunch, dinner, and dessert), and earn money based on how well you prepare your dishes.</p>
+    <p>Earn more money, upgrade your kitchen equipment, and build your reputation as a master chef!</p>
+
+    <h2>🛒 Shopping Phase</h2>
+    <p>At the start of each day, you visit the <strong>Cooking Emporium</strong> to buy the ingredients and supplies you need.</p>
+
+    <p><strong>Example prompts:</strong></p>
+    <ul>
+      <li>"Buy 5 eggs, 2 bags of flour, 1 gallon of milk, and a frying pan."</li>
+      <li>"Purchase some steak, potatoes, onions, and a meat thermometer."</li>
+    </ul>
+
+    <p><strong>Example AI Response:</strong></p>
+    <blockquote>You bought 5 eggs, 2 bags of flour, 1 gallon of milk, and a frying pan. $43.50 has been deducted from your balance.</blockquote>
+
+    <p><em>Tip: Plan ahead! You can only buy at the beginning of the day, not while cooking!</em></p>
+
+    <h2>🍳 Cooking Phase</h2>
+    <p>Each day you have four opportunities to cook:</p>
+    <ol>
+      <li>Breakfast</li>
+      <li>Lunch</li>
+      <li>Dinner</li>
+      <li>Dessert</li>
+    </ol>
+
+    <p><strong>Example prompts:</strong></p>
+    <ul>
+      <li>"For breakfast, I crack three eggs into a bowl, whisk them with a splash of milk, season with salt and pepper, and cook them gently over medium heat until fluffy."</li>
+      <li>"For lunch, I season a steak with salt and pepper, sear it in a hot pan until medium rare, and serve it with mashed potatoes and sautéed onions."</li>
+      <li>"For dinner, I roast a whole chicken with herbs and garlic, paired with roasted carrots and potatoes."</li>
+      <li>"For dessert, I bake a chocolate cake from scratch using cocoa powder, eggs, sugar, and butter."</li>
+    </ul>
+
+    <p><strong>Example AI Response:</strong></p>
+    <blockquote>Your scrambled eggs are fluffy and perfectly seasoned! Customers love them, and you earn $18.50!</blockquote>
+
+    <p><em>The more detailed and realistic your description, the better your results!</em></p>
+
+    <h2>💰 Earning and Progression</h2>
+    <ul>
+      <li>Earn money for each successful meal based on quality.</li>
+      <li>Good technique, use of ingredients, creativity, and presentation matter!</li>
+      <li>Save up to buy better equipment and ingredients.</li>
+      <li>Eventually expand beyond your food cart to new restaurant locations!</li>
+    </ul>
+
+    <h2>🧠 Tips for Success</h2>
+    <ul>
+      <li>Be descriptive. Think like a real chef!</li>
+      <li>Clearly explain your cooking steps (e.g., "First, I marinate the chicken...").</li>
+      <li>Mention temperatures, times, textures, and flavors.</li>
+      <li>Plan ahead so you don't run out of ingredients!</li>
+    </ul>
+
+    <h2>🕹 How to Interact</h2>
+    <ul>
+      <li><strong>Type your actions like you're telling a story.</strong></li>
+      <li><strong>Ask the AI questions if you're unsure!</strong> (Example: "What ingredients do I have left?" or "Give me ideas for a fancy dinner.")</li>
+      <li><strong>Stay immersed.</strong> The AI acts like your personal game master!</li>
+    </ul>
+
+    <h2>🔥 Ready to Cook?</h2>
+    <p>Type into the prompt, start shopping, and prepare your first meal. Your journey to culinary greatness begins now!</p>
+  </div>
+  </div>
+  <div id="footer"></div>
+  
+</body>
+<script>
+// Insert Header
+  fetch('/static/header.html')
+    .then(res => res.text())
+    .then(data => {
+      document.getElementById('header').innerHTML = data;
+    });
+
+  // Insert Footer
+  fetch('/static/footer.html')
+    .then(res => res.text())
+    .then(data => {
+      document.getElementById('footer').innerHTML = data;
+    });  
+    
+</script>
+</html>
