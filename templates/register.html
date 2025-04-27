@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="/static/styles.css" />
 </head>
 <body>
-<div id="header"></div>
+{% include 'header.html' %}
 <div class="centered-container">
 
   <div class="login-container">
@@ -29,22 +29,9 @@
     <p style="margin-top: 1rem;">Already have an account? <a href="/">Login here</a></p>
     <div id="registerMessage" style="margin-top: 1rem; color: red;"></div>
   </div>
+{% include 'footer.html' %}
 
   <script>
-    // Insert Header
-  fetch('/static/header.html')
-    .then(res => res.text())
-    .then(data => {
-      document.getElementById('header').innerHTML = data;
-    });
-
-  // Insert Footer
-  fetch('/static/footer.html')
-    .then(res => res.text())
-    .then(data => {
-      document.getElementById('footer').innerHTML = data;
-    });
-  
     const registerForm = document.getElementById("registerForm");
     const msg = document.getElementById("registerMessage");
 
