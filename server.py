@@ -373,9 +373,9 @@ def reset_password(token):
         session.close()
 
 
-@app.route("/how_the_game_works")
+@app.route("/how-the-game-works")
 def how_the_game_works():
-    return render_template("how-the-game-works.html")
+    return render_template("how_the_game_works.html")
 
 @app.route("/home")
 def home():
