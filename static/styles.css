@@ -27,3 +27,12 @@ button {
     width: 90%; /* Wider on smaller screens */
   }
 }
+.logo {
+  width: 10%;
+  max-width: 100px;
+  height: auto;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: #FFD700; /* Bright gold */
+}
