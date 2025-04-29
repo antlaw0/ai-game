@@ -1,21 +1,26 @@
-<header style="background-color: #333; color: white; padding: 20px; font-family: Arial, sans-serif;">
-  
-    <!-- Logo -->
-    <div style="flex-shrink: 0;">
-      <img class="logo" src="{{ url_for('static', filename='images/mainLogo.png') }}" alt="AI Cooking Game logo" />
-    </div>
-<div style="display: flex; justify-content: space-between; align-items: center; max-width: 1200px; margin: 0 auto;">
-
-    <!-- Navigation -->
-    <nav>
-      <ul style="display: flex; gap: 20px; list-style-type: none; margin: 0; padding: 0;">
-        <li><a href="{{ url_for('home') }}" style="color: white; text-decoration: none;">Home</a></li>
-        <li><a href="{{ url_for('how_the_game_works') }}" style="color: white; text-decoration: none;">How the game works</a></li>
-        <li><a href="#view-profile" style="color: white; text-decoration: none;">View profile</a></li>
-        <li><a href="#about" style="color: white; text-decoration: none;">About</a></li>
-        <li><a href="#contact" style="color: white; text-decoration: none;">Contact</a></li>
-      </ul>
-    </nav>
-
+<header style="background-color: #333; color: white; padding: 20px 40px; font-family: Arial, sans-serif; display: flex; align-items: center; justify-content: space-between;">
+  <!-- Left side: Logo and Title -->
+  <div style="display: flex; align-items: center; gap: 15px;">
+    <img class="logo" src="{{ url_for('static', filename='images/mainLogo.png') }}" alt="AI Cooking Game logo" style="height: 50px;">
+    <span style="font-family: 'Comic Sans MS', cursive, sans-serif; font-size: 28px; color: #ffcc00;">AI Cooking Game</span>
   </div>
+
+  <!-- Right side: Navigation -->
+  <center>
+  <nav>
+    <ul style="display: flex; gap: 40px; list-style: none; margin: 0; padding: 0;">
+      <li><a href="{{ url_for('home') }}" style="color: white; text-decoration: none; padding: 8px 16px; border-radius: 8px; transition: background 0.3s;">Home</a></li>
+      <li><a href="{{ url_for('how_the_game_works') }}" style="color: white; text-decoration: none; padding: 8px 16px; border-radius: 8px; transition: background 0.3s;">How the game works</a></li>
+      <li><a href="#view-profile" style="color: white; text-decoration: none; padding: 8px 16px; border-radius: 8px; transition: background 0.3s;">View profile</a></li>
+      <li><a href="#about" style="color: white; text-decoration: none; padding: 8px 16px; border-radius: 8px; transition: background 0.3s;">About</a></li>
+    </ul>
+  </nav>
+</center>
 </header>
+
+<!-- Add hover effect for links -->
+<style>
+  header nav a:hover {
+    background-color: #555;
+  }
+</style>
