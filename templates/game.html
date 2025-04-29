@@ -38,64 +38,50 @@
   </div>
 {% include 'footer.html' %}
 
-  <script>
-  
-    const chatForm = document.getElementById("chatForm");
-    const chatLog = document.getElementById("chatLog");
-    const messageInput = document.getElementById("messageInput");
+<script>
+  const chatForm = document.getElementById("chatForm");
+  const chatLog = document.getElementById("chatLog");
+  const messageInput = document.getElementById("messageInput");
 
-    const playerName = document.getElementById("playerName");
-    const restaurantName = document.getElementById("restaurantName");
-    const gameDay = document.getElementById("gameDay");
-    const playerMoney = document.getElementById("playerMoney");
-    const inventoryList = document.getElementById("inventoryList");
+  const playerName = document.getElementById("playerName");
+  const restaurantName = document.getElementById("restaurantName");
+  const gameDay = document.getElementById("gameDay");
+  const playerMoney = document.getElementById("playerMoney");
+  const inventoryList = document.getElementById("inventoryList");
 
-    const userId = localStorage.getItem("user_id");
+  const userId = localStorage.getItem("user_id");
 
-    if (!userId) {
-      window.location.href = "/login-page";
-    }
+  if (!userId) {
+    window.location.href = "/login-page";
+  }
 
-    function logout() {
-      localStorage.removeItem("user_id");
-      window.location.href = "/login-page";
-    }
+  function logout() {
+    localStorage.removeItem("user_id");
+    window.location.href = "/login-page";
+  }
 
-    chatForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const message = messageInput.value;
-      messageInput.value = "";
-
-      const entry = document.createElement("p");
-      entry.innerHTML = `<strong>You:</strong> ${message}`;
-      chatLog.appendChild(entry);
-
-      const response = await fetch("/api/chat", {
+  async function loadGameState() {
+    try {
+      const response = await fetch("/api/state", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message, user_id: userId }),
+        body: JSON.stringify({ user_id: userId }),
       });
 
-      const result = await response.json();
+      const data = await response.json();
 
-      if (result.error) {
-        chatLog.innerHTML += `<p style="color:red;"><strong>Error:</strong> ${result.error}</p>`;
+      if (data.error) {
+        console.error("State load error:", data.error);
         return;
       }
 
-      const aiEntry = document.createElement("p");
-      aiEntry.innerHTML = `<strong>AI:</strong> ${result.response}`;
-      chatLog.appendChild(aiEntry);
+      playerName.textContent = data.player || "-";
+      restaurantName.textContent = data.restaurant || "-";
+      gameDay.textContent = data.day || "1";
+      playerMoney.textContent = data.money?.toFixed(2) || "200.00";
 
-      // Update info
-      playerName.textContent = result.player || "-";
-      restaurantName.textContent = result.restaurant || "-";
-      gameDay.textContent = result.day || "1";
-      playerMoney.textContent = result.money?.toFixed(2) || "200.00";
-
-      // Update inventory list
       inventoryList.innerHTML = "";
-      const inv = result.inventory || {};
+      const inv = data.inventory || {};
       const keys = Object.keys(inv);
       if (keys.length === 0) {
         inventoryList.innerHTML = "<li>None</li>";
@@ -106,11 +92,63 @@
           inventoryList.appendChild(item);
         });
       }
-    });
-  </script>
-  </div>
-  <div id="footer"></div>
 
+    } catch (err) {
+      console.error("Failed to load game state:", err);
+    }
+  }
+
+  chatForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const message = messageInput.value;
+    messageInput.value = "";
+
+    const entry = document.createElement("p");
+    entry.innerHTML = `<strong>You:</strong> ${message}`;
+    chatLog.appendChild(entry);
+
+    const response = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message, user_id: userId }),
+    });
+
+    const result = await response.json();
+
+    if (result.error) {
+      chatLog.innerHTML += `<p style="color:red;"><strong>Error:</strong> ${result.error}</p>`;
+      return;
+    }
+
+    const aiEntry = document.createElement("p");
+    aiEntry.innerHTML = `<strong>AI:</strong> ${result.response}`;
+    chatLog.appendChild(aiEntry);
+
+    playerName.textContent = result.player || "-";
+    restaurantName.textContent = result.restaurant || "-";
+    gameDay.textContent = result.day || "1";
+    playerMoney.textContent = result.money?.toFixed(2) || "200.00";
+
+    inventoryList.innerHTML = "";
+    const inv = result.inventory || {};
+    const keys = Object.keys(inv);
+    if (keys.length === 0) {
+      inventoryList.innerHTML = "<li>None</li>";
+    } else {
+      keys.forEach((key) => {
+        const item = document.createElement("li");
+        item.textContent = `${key}: ${inv[key]}`;
+        inventoryList.appendChild(item);
+      });
+    }
+  });
+
+  // Load game state immediately on page load
+  window.addEventListener("DOMContentLoaded", loadGameState);
+</script>
+
+</div>
+<div id="footer"></div>
 
 </body>
 </html>
