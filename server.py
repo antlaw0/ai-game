@@ -394,6 +394,39 @@ def home():
     return render_template("index.html")
 
 
+# (Keep all your existing imports and setup unchanged)
+
+@app.route("/api/state", methods=["POST"])
+def get_game_state():
+    session = SessionLocal()
+    try:
+        data = request.get_json()
+        user_id = data.get("user_id")
+        user = session.query(User).filter_by(id=user_id).first()
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+
+        state = session.query(GameState).filter_by(user_id=user_id).first()
+        if not state:
+            state = GameState(user_id=user_id)
+            session.add(state)
+            session.commit()
+
+        return jsonify({
+            "player": user.name,
+            "restaurant": user.restaurant,
+            "day": state.day,
+            "money": state.money,
+            "inventory": json.loads(state.inventory or '{}')
+        })
+
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        session.close()
+
+
 # ---------- RUN ----------
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
