@@ -12,38 +12,7 @@
 {% include 'header.html' %}
 
 <div class="centered-container">
-  <div class="login-container">
-    <h1>Log in or Sign Up </h1>
-    <p>Enter your email and password to sign in or create a new account.</p>
-
-    <form id="authForm">
-      <label for="email">Email:</label><br />
-      <input type="email" id="email" name="email" required /><br />
-
-      <label for="password">Password:</label><br />
-      <input type="password" id="password" name="password" required /><br />
-
-      <button type="submit">Continue</button>
-    </form>
-	<br>
-	<p>
-  Forgot your password? 
-  <a href="/forgot-password">Reset it here</a>.
-</p>
-
-<br>
-<br>
-or
-<br>
-<a href="/register-page">Create an account</a>
-
-<br>
-
-    <div id="authMessage" style="margin-top: 1rem; color: red;"></div>
-  </div>
-<br>
-<br>
-<br>
+  
 <H2> How the Game Works </H2>
 <br>
 <p>
@@ -53,7 +22,8 @@ Each day starts at the Cooking Emporium—a massive store where you can buy all 
 You'll prepare four meals per day: breakfast, lunch, dinner, and dessert. How well you cook each meal determines how much money you earn. Use your earnings to buy better ingredients, upgrade your equipment, and eventually move into bigger and more advanced cooking establishments.
 You play by simply typing your actions. The AI reads what you write and responds based on the game’s built-in rules. Talk to it like you would a real person: ask questions, explain what you want to do, and describe how you're cooking. The more detailed and skillful your cooking descriptions are, the better your results will be!
 Think you’ve got what it takes to be a top chef?
-Let’s get cooking!
+You will need to <a href="{{ url_for('register_page') }}"> Register a new account</a>
+in order to keep track of your progress in the game. Next time you visit, you can click the Login link at the top to login with your account and pick up where you left off. Let’s get cooking!
 </p>
 </div>
 {% include 'footer.html' %}
