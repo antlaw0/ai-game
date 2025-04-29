@@ -133,17 +133,29 @@ def login():
         if not bcrypt.checkpw(password.encode(), user.password_hash.encode()):
             return jsonify({"error": "Invalid credentials"}), 401
 
+        # Fetch saved game state
+        state = session.query(GameState).filter_by(user_id=user.id).first()
+        if not state:
+            # If no game state yet, create one
+            state = GameState(user_id=user.id)
+            session.add(state)
+            session.commit()
+
         return jsonify({
             "message": "Login successful",
             "user_id": user.id,
             "name": user.name,
-            "restaurant": user.restaurant
+            "restaurant": user.restaurant,
+            "day": state.day,
+            "money": state.money,
+            "inventory": json.loads(state.inventory or '{}')
         })
     except Exception as e:
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
     finally:
         session.close()
+
 
 # ---------- BUY API ----------
 @app.route("/api/buy", methods=["POST"])

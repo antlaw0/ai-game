@@ -29,7 +29,6 @@
     <p style="margin-top: 1rem;">Already have an account? <a href="/">Login here</a></p>
     <div id="registerMessage" style="margin-top: 1rem; color: red;"></div>
   </div>
-{% include 'footer.html' %}
 
   <script>
     const registerForm = document.getElementById("registerForm");
@@ -85,7 +84,7 @@
     });
   </script>
   </div>
-  <div id="footer"></div>
+  {% include 'footer.html' %}
 
 </body>
 </html>
