@@ -77,7 +77,7 @@ def index():
 
 @app.route("/login-page")
 def login_page():
-    return render_template("index.html")
+    return render_template("login.html")
 
 @app.route("/register-page")
 def register_page():
