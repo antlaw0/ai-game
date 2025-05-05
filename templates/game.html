@@ -131,10 +131,12 @@
 <body>
 
 <div class="sidebar">
-  <h1>Cooking Game</h1>
+  <h1>AI Cooking Game</h1>
 
-  <a href="/" role="link">🏠 Return Home</a>
-  <button onclick="logout()">🚪 Logout</button>
+  <span aria-hidden="true">🏠</span>
+  <a href="/" role="link"> Return to Home page</a>
+  <span aria-hidden="true">🚪</span>
+  <button onclick="logout()"> Logout</button>
 
   <div class="player-info">
     <p><strong>Player:</strong> <span id="playerName">-</span></p>
@@ -158,7 +160,8 @@
   <div class="game-log" id="chatLog"></div>
 
   <form id="chatForm">
-    <input type="text" id="messageInput" placeholder="What do you do?" required />
+   <label for="messageInput">Enter message:</label>
+	<input type="text" id="messageInput" placeholder="What do you do?" required />
     <button type="submit">Send</button>
   </form>
 </div>
