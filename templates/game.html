@@ -72,8 +72,8 @@
       margin-bottom: 1rem;
       padding: 1rem;
       border-radius: 8px;
-      background-color: #f0f0f0;
-      color: #000;
+      //background-color: #f0f0f0;
+      //color: #000;
     }
 
     h2.player {
@@ -264,7 +264,9 @@
     chatLog.scrollTop = chatLog.scrollHeight;
 
     ariaLoading.textContent = "";
-    ariaDone.textContent = "AI says: ";
+    //ariaDone.textContent = "AI says: ";
+	ariaDone.textContent = "AI says: " + result.response;
+
 
     playerName.textContent = result.player || "-";
     restaurantName.textContent = result.restaurant || "-";
