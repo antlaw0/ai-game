@@ -11,7 +11,7 @@
   <div class="login-container">
     <h1>Reset Your Password</h1>
 
-    <form method="POST">
+    <form id="resetForm">
       <label for="password">New Password:</label><br />
       <input type="password" id="password" name="password" required /><br />
 
@@ -24,8 +24,69 @@
     <p style="margin-top: 1rem;">
       <a href="/">Back to login</a>
     </p>
+
+    <div id="resetMessage" role="alert" style="margin-top: 1rem; color: red;"></div>
   </div>
-  
+
+  <script>
+    const resetForm = document.getElementById("resetForm");
+    const msg = document.getElementById("resetMessage");
+
+    // Get the token from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get("token");
+
+    if (!token) {
+      msg.innerText = "Invalid or missing reset token.";
+      resetForm.style.display = "none";
+    }
+
+    resetForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const password = document.getElementById("password").value;
+      const confirm = document.getElementById("confirm").value;
+
+      // Validate password strength
+      let reasons = [];
+      if (password.length < 8) reasons.push("at least 8 characters");
+      if (!/[A-Z]/.test(password)) reasons.push("an uppercase letter");
+      if (!/\d/.test(password)) reasons.push("a number");
+      if (!/[!@#$%^&*]/.test(password)) reasons.push("a special character");
+
+      if (reasons.length > 0) {
+        msg.innerText = "Password must contain: " + reasons.join(", ");
+        return;
+      }
+
+      if (password !== confirm) {
+        msg.innerText = "Passwords do not match.";
+        return;
+      }
+
+      try {
+        const response = await fetch("https://antlaw-games-accounts.onrender.com/api/reset-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token, password, confirm })
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          msg.style.color = "green";
+          msg.innerText = "Password reset successful! Redirecting to login...";
+          setTimeout(() => window.location.href = "/", 1500);
+        } else {
+          msg.innerText = result.error || "Failed to reset password.";
+        }
+      } catch (err) {
+        msg.innerText = "Error connecting to server.";
+        console.error(err);
+      }
+    });
+  </script>
+
   {% include 'footer.html' %}
 </body>
 </html>

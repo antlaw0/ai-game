@@ -31,59 +31,58 @@
   </div>
 
   <script>
-    const registerForm = document.getElementById("registerForm");
-    const msg = document.getElementById("registerMessage");
+  const registerForm = document.getElementById("registerForm");
+  const msg = document.getElementById("registerMessage");
 
-    registerForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
+  registerForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
 
-      const email = document.getElementById("email").value;
-      const password = document.getElementById("password").value;
-      const confirm = document.getElementById("confirm").value;
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
+    const confirm = document.getElementById("confirm").value;
 
-      // Validate password strength
-      let reasons = [];
-      if (password.length < 8) reasons.push("at least 8 characters");
-      if (!/[A-Z]/.test(password)) reasons.push("an uppercase letter");
-      if (!/\d/.test(password)) reasons.push("a number");
-      if (!/[!@#$%^&*]/.test(password)) reasons.push("a special character");
+    // Validate password strength
+    let reasons = [];
+    if (password.length < 8) reasons.push("at least 8 characters");
+    if (!/[A-Z]/.test(password)) reasons.push("an uppercase letter");
+    if (!/\d/.test(password)) reasons.push("a number");
+    if (!/[!@#$%^&*]/.test(password)) reasons.push("a special character");
 
-      if (reasons.length > 0) {
-        msg.innerText = "Password must contain: " + reasons.join(", ");
-        return;
+    if (reasons.length > 0) {
+      msg.innerText = "Password must contain: " + reasons.join(", ");
+      return;
+    }
+
+    if (password !== confirm) {
+      msg.innerText = "Passwords do not match.";
+      return;
+    }
+
+    try {
+      const response = await fetch("https://antlaw-games-accounts.onrender.com/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, confirm })
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        msg.style.color = "green";
+        msg.innerText = "Account created! Redirecting to login...";
+        setTimeout(() => window.location.href = "/", 1500);
+      } else if (result.error && result.error.includes("already")) {
+        msg.innerText = "An account with this email already exists.";
+      } else {
+        msg.innerText = result.error || "Something went wrong.";
       }
-
-      // Confirm password match
-      if (password !== confirm) {
-        msg.innerText = "Passwords do not match.";
-        return;
-      }
-
-      try {
-        const response = await fetch("/register", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password })
-        });
-
-        const result = await response.json();
-
-        if (response.ok) {
-          msg.style.color = "green";
-          msg.innerText = "Account created! Redirecting to login...";
-          setTimeout(() => window.location.href = "/", 1500);
-        } else if (result.error && result.error.includes("already registered")) {
-          msg.innerText = "An account with this email already exists.";
-        } else {
-          msg.innerText = result.error || "Something went wrong.";
-        }
-      } catch (err) {
-        msg.innerText = "Error connecting to server.";
-        console.error(err);
-      }
-    });
-  </script>
-  </div>
+    } catch (err) {
+      msg.innerText = "Error connecting to server.";
+      console.error(err);
+    }
+  });
+</script>
+</div>
   {% include 'footer.html' %}
 
 </body>
