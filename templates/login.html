@@ -23,20 +23,18 @@
 
       <button type="submit">Login</button>
     </form>
-<br>
-<p>
-  Forgot your password? 
-  <a href="/forgot-password">Reset it here</a>.
-</p>
 
-<br>
+    <br>
+    <p>
+      Forgot your password?
+      <a href="https://accounts.antlawgames.com/forgot-password" target="_blank">Reset it here</a>.
+    </p>
 
-    <p style="margin-top: 1rem;">Don't have an account? <a href="/register-page">Create one</a></p>
+    <p style="margin-top: 1rem;">Don't have an account? <a href="https://accounts.antlawgames.com/register" target="_blank">Create one</a></p>
     <div id="loginMessage" role="alert" style="margin-top: 1rem; color: red;"></div>
   </div>
 
   <script>
-  
     const loginForm = document.getElementById("loginForm");
     const msg = document.getElementById("loginMessage");
 
@@ -45,32 +43,33 @@
       const email = document.getElementById("email").value;
       const password = document.getElementById("password").value;
 
-      const response = await fetch("/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password })
-      });
+      try {
+        const response = await fetch("https://antlaw-games-accounts.onrender.com/auth/api/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password })
+        });
 
-      const result = await response.json();
+        const result = await response.json();
 
-      if (response.ok) {
-        localStorage.setItem("user_id", result.user_id);
-        window.location.href = "/game";
-      } else {
-        if (result.error === "Invalid credentials") {
-          msg.innerText = "Incorrect password. Please try again.";
-        } else if (result.error === "No such account") {
-          msg.innerHTML = "No account found. <a href='/register-page'>Create one?</a>";
+        if (response.ok) {
+          localStorage.setItem("auth_token", result.access_token);
+          localStorage.setItem("user_id", result.user_id); // optional
+          window.location.href = "/game"; // adjust this to your game start route
         } else {
-          msg.innerText = result.error;
+          msg.innerText = result.error || "Login failed. Please try again.";
         }
+      } catch (err) {
+        msg.innerText = "Error connecting to login server.";
+        console.error(err);
       }
     });
   </script>
-  </div>
-  <div id="footer"></div>
+</div>
+
+<div id="footer"></div>
 <script>
-// Insert Header
+  // Insert Header
   fetch('/static/header.html')
     .then(res => res.text())
     .then(data => {
@@ -82,10 +81,8 @@
     .then(res => res.text())
     .then(data => {
       document.getElementById('footer').innerHTML = data;
-    });  
-    
+    });
 </script>
 {% include 'footer.html' %}
-
 </body>
 </html>
