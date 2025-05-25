@@ -7,97 +7,87 @@
   <link rel="stylesheet" href="/static/styles.css" />
 </head>
 
-
 <body>
 {% include 'header.html' %}
 
 <div class="centered-container">
-  
-<H1> Welcome to the AI Cooking Game! </H1>
-<br>
-<img  src="{{ url_for('static', filename='images/gameTitleImage.png') }}" alt="AI Cooking Game title">
-    
-	<br>
-<p>
-Welcome to the AI-Powered Cooking Simulator!
-In this text-based cooking game, you begin your journey as the owner of a small street-side food stand. Your goal? Work your way up to owning larger and better restaurants!
-Each day starts at the Cooking Emporium—a massive store where you can buy all the ingredients and supplies you’ll need. After shopping, return to your food stand and start cooking.
-You'll prepare four meals per day: breakfast, lunch, dinner, and dessert. How well you cook each meal determines how much money you earn. Use your earnings to buy better ingredients, upgrade your equipment, and eventually move into bigger and more advanced cooking establishments.
-You play by simply typing your actions. The AI reads what you write and responds based on the game’s built-in rules. Talk to it like you would a real person: ask questions, explain what you want to do, and describe how you're cooking. The more detailed and skillful your cooking descriptions are, the better your results will be!
-Think you’ve got what it takes to be a top chef?
-You will need to <a href="{{ url_for('register_page') }}"> Register a new account</a>
-in order to keep track of your progress in the game. Next time you visit, you can click the Login link at the top to login with your account and pick up where you left off. Let’s get cooking!
-</p>
-<br>
-<h2> Announcements and Updates </H2>
-<br>
-<p>
-This is more of a proof-of-concept rather than a fully fledged game at the moment. I have some plans for future updates which include:
-<br>
-<ul>
-<li> More structured progression- streetside food stand > food truck, etc. </li>
-<li> Definitely better AI- need to provide more datasets to improve responses, more robust system prompt. </li>
-<li> Top high scores and leaderboards </li>
-</ul>
-Bug reporting, feedback, suggestions, etc welcomed. The project is in a closed beta so if you have access, you already know how to get a hold of me.
-</p>
+  <h1>Welcome to the AI Cooking Game!</h1>
+  <br>
+  <img src="{{ url_for('static', filename='images/gameTitleImage.png') }}" alt="AI Cooking Game title">
+  <br>
+
+  <p>
+    Welcome to the AI-Powered Cooking Simulator!<br><br>
+    In this text-based cooking game, you begin your journey as the owner of a small street-side food stand.
+    Your goal? Work your way up to owning larger and better restaurants!
+    <br><br>
+    You will need to <a href="{{ url_for('register_page') }}">register a new account</a> to keep track of your progress.
+    Already registered? Use the login form below.
+  </p>
+
+  <h2>Login</h2>
+  <form id="authForm">
+    <label for="email">Email:</label><br />
+    <input type="email" id="email" name="email" required /><br />
+
+    <label for="password">Password:</label><br />
+    <input type="password" id="password" name="password" required /><br />
+
+    <button type="submit">Login</button>
+  </form>
+  <div id="authMessage" style="margin-top: 1rem; color: red;"></div>
+
+  <h2>Announcements and Updates</h2>
+  <p>
+    This is more of a proof-of-concept rather than a fully fledged game at the moment.
+    Future updates include:
+    <ul>
+      <li>More structured progression: street-side stand → food truck, etc.</li>
+      <li>Improved AI with better datasets</li>
+      <li>High scores and leaderboards</li>
+    </ul>
+    Bug reports and feedback are welcome. You know how to reach me!
+  </p>
 </div>
+
 {% include 'footer.html' %}
 
-  <script>
-  
-    // Insert Header
-  //fetch('/static/header.html')
-//    .then(res => res.text())
-    //.then(data => {
-//      document.getElementById('header').innerHTML = data;
-    //});
+<script>
+  const form = document.getElementById("authForm");
+  const msg = document.getElementById("authMessage");
 
-  // Insert Footer
-  //fetch('/static/footer.html')
-//    .then(res => res.text())
-    //.then(data => {
-//      document.getElementById('footer').innerHTML = data;
-    //});  
-    const form = document.getElementById("authForm");
-    const msg = document.getElementById("authMessage");
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value;
 
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const email = document.getElementById("email").value;
-      const password = document.getElementById("password").value;
-
-      // Try login first
-      let response = await fetch("/login", {
+    try {
+      const response = await fetch("https://antlaw-games-accounts.onrender.com/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password })
       });
 
-      let result = await response.json();
+      const result = await response.json();
 
       if (response.ok) {
         localStorage.setItem("user_id", result.user_id);
-        window.location.href = "/game";
-      } else if (result.error === "Invalid credentials") {
-        // Register fallback
-        response = await fetch("/register", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password })
-        });
-        result = await response.json();
-        if (response.ok) {
-          localStorage.setItem("user_id", result.user_id);
+        msg.style.color = "green";
+        msg.innerText = "Login successful! Redirecting...";
+        setTimeout(() => {
           window.location.href = "/game";
-        } else {
-          msg.innerText = "Signup failed: " + result.error;
-        }
+        }, 1000);
       } else {
-        msg.innerText = result.error;
+        msg.style.color = "red";
+        msg.innerText = result.error || "Login failed.";
       }
-    });
-  </script>
-<div id="footer"></div>
+    } catch (err) {
+      console.error("Login error:", err);
+      msg.style.color = "red";
+      msg.innerText = "Could not connect to account server.";
+    }
+  });
+</script>
+
 </body>
 </html>
