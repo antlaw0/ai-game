@@ -1,93 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Home - Cooking Game</title>
-  <link rel="stylesheet" href="/static/styles.css" />
+    <meta charset="UTF-8">
+    <title>AI Cooking Game</title>
 </head>
-
 <body>
-{% include 'header.html' %}
-
-<div class="centered-container">
-  <h1>Welcome to the AI Cooking Game!</h1>
-  <br>
-  <img src="{{ url_for('static', filename='images/gameTitleImage.png') }}" alt="AI Cooking Game title">
-  <br>
-
-  <p>
-    Welcome to the AI-Powered Cooking Simulator!<br><br>
-    In this text-based cooking game, you begin your journey as the owner of a small street-side food stand.
-    Your goal? Work your way up to owning larger and better restaurants!
-    <br><br>
-    You will need to <a href="{{ url_for('register_page') }}">register a new account</a> to keep track of your progress.
-    Already registered? Use the login form below.
-  </p>
-
-  <h2>Login</h2>
-  <form>
-  <label for="email">Email:</label><br />
-    <input type="email" id="email" name="email" required /><br />
-
-    <label for="password">Password:</label><br />
-    <input type="password" id="password" name="password" required /><br />
-
-    <button type="submit">Login</button>
-  </form>
-  <div id="authMessage" style="margin-top: 1rem; color: red;"></div>
-
-  <h2>Announcements and Updates</h2>
-  <p>
-    This is more of a proof-of-concept rather than a fully fledged game at the moment.
-    Future updates include:
-    <ul>
-      <li>More structured progression: street-side stand → food truck, etc.</li>
-      <li>Improved AI with better datasets</li>
-      <li>High scores and leaderboards</li>
-    </ul>
-    Bug reports and feedback are welcome. You know how to reach me!
-  </p>
-</div>
-
-{% include 'footer.html' %}
-
-<script>
-  const form = document.getElementById("authForm");
-  const msg = document.getElementById("authMessage");
-
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const email = document.getElementById("email").value.trim();
-    const password = document.getElementById("password").value;
-
-    try {
-      const response = await fetch("https://antlaw-games-accounts.onrender.com/api/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password })
-      });
-
-      const result = await response.json();
-
-      if (response.ok) {
-        localStorage.setItem("user_id", result.user_id);
-        msg.style.color = "green";
-        msg.innerText = "Login successful! Redirecting...";
-        setTimeout(() => {
-          window.location.href = "/game";
-        }, 1000);
-      } else {
-        msg.style.color = "red";
-        msg.innerText = result.error || "Login failed.";
-      }
-    } catch (err) {
-      console.error("Login error:", err);
-      msg.style.color = "red";
-      msg.innerText = "Could not connect to account server.";
-    }
-  });
-</script>
-
+    <h1>Welcome to the AI Cooking Game!</h1>
+    <p>You will need to <a href="{{ url_for('register_page') }}">register a new account</a> to keep track of your progress.</p>
+    <p>Already have an account? <a href="{{ url_for('login_page') }}">Login here</a>.</p>
+    <p><a href="{{ url_for('dashboard') }}">Go to Dashboard</a></p>
 </body>
 </html>
