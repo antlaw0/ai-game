@@ -33,7 +33,9 @@
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ email, password, confirm_password: confirm })
+                body: JSON.stringify({ email, password, confirm })
+
+				
             });
 
             const result = await response.json();
@@ -41,7 +43,8 @@
                 alert('Registered successfully! Please log in.');
                 window.location.href = '/login-page';
             } else {
-                alert(result.message || 'Registration failed.');
+                alert(result.error || result.message || 'Registration failed.');
+
             }
         } catch (error) {
             console.error('Error:', error);
