@@ -17,35 +17,38 @@
     </form>
 
     <script>
-        document.getElementById('login-form').addEventListener('submit', async (event) => {
-            event.preventDefault();
+    document.getElementById('login-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
 
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
 
-            try {
-                const response = await fetch('https://antlaw-games-accounts.onrender.com/api/login', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ email, password })
-                });
+        try {
+            const response = await fetch('https://antlaw-games-accounts.onrender.com/api/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ email, password })
+            });
 
-                const result = await response.json();
-                if (response.ok) {
-                                    localStorage.setItem('token', result.token); // Save token locally
-					alert('Login successful!');
-                                    window.location.href = '/dashboard'; // Or wherever your game starts
-					
-                } else {
-                    alert(result.error || 'Login failed');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('An error occurred while logging in.');
+            const result = await response.json();
+
+            if (response.ok && result.token) {
+                // Set cookie to expire in 1 day
+                document.cookie = `token=${result.token}; path=/; max-age=86400`;
+
+                alert('Login successful!');
+                window.location.href = '/dashboard';
+            } else {
+                alert(result.error || 'Login failed');
             }
-        });
-    </script>
+        } catch (error) {
+            console.error('Error:', error);
+            alert('An error occurred while logging in.');
+        }
+    });
+</script>
+
 </body>
 </html>
