@@ -34,8 +34,10 @@
 
                 const result = await response.json();
                 if (response.ok) {
-                    alert('Login successful!');
-                    // TODO: Store the token and redirect to the game dashboard
+                                    localStorage.setItem('token', result.token); // Save token locally
+					alert('Login successful!');
+                                    window.location.href = '/dashboard'; // Or wherever your game starts
+					
                 } else {
                     alert(result.error || 'Login failed');
                 }
