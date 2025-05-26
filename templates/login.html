@@ -2,17 +2,48 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Login</title>
+    <title>Login - AI Cooking Game</title>
 </head>
 <body>
     <h1>Login</h1>
-    <form method="post">
-        <label>Email:</label><br>
-        <input type="email" name="email" required><br>
-        <label>Password:</label><br>
-        <input type="password" name="password" required><br>
+    <form id="login-form">
+        <label for="email">Email:</label>
+        <input type="email" id="email" required><br>
+
+        <label for="password">Password:</label>
+        <input type="password" id="password" required><br>
+
         <button type="submit">Login</button>
     </form>
-    <p>Don't have an account? <a href="{{ url_for('register_page') }}">Register here</a>.</p>
+
+    <script>
+        document.getElementById('login-form').addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch('https://antlaw-games-accounts.onrender.com/api/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const result = await response.json();
+                if (response.ok) {
+                    alert('Login successful!');
+                    // TODO: Store the token and redirect to the game dashboard
+                } else {
+                    alert(result.error || 'Login failed');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred while logging in.');
+            }
+        });
+    </script>
 </body>
 </html>
