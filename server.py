@@ -39,5 +39,12 @@ def dashboard():
     except jwt.InvalidTokenError:
         return redirect(url_for('login_page'))  # Invalid token
 
+@app.route('/logout')
+def logout():
+    response = make_response(redirect(url_for('login_page')))
+    response.set_cookie('token', '', expires=0)
+    return response
+
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
