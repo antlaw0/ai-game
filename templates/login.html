@@ -39,7 +39,7 @@
                 document.cookie = `token=${result.token}; path=/; max-age=86400`;
 
                 alert('Login successful!');
-                window.location.href = '/dashboard';
+                window.location.href = '/game';
             } else {
                 alert(result.error || 'Login failed');
             }
