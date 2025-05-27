@@ -36,7 +36,7 @@ def token_required(f):
         return f(*args, **kwargs)
     return decorated
 
-# ✅ Mock in-memory user game states
+# ✅ In-memory game state (for dev/testing)
 user_states = {}
 
 # ✅ Routes
@@ -65,6 +65,12 @@ def logout():
     response.set_cookie('token', '', expires=0)
     return response
 
+@app.route('/game')
+@token_required
+def game():
+    return render_template('game.html')
+
+# ✅ Simple user data
 @app.route('/api/user-data')
 @token_required
 def get_user_data():
@@ -76,13 +82,12 @@ def get_user_data():
     }
     return jsonify(data)
 
-# ✅ Game state API
+# ✅ Get game state
 @app.route('/api/state', methods=['POST'])
 @token_required
 def get_game_state():
     email = request.user.get('email')
     if email not in user_states:
-        # Create default game state if not already present
         user_states[email] = {
             'player': email.split('@')[0].capitalize(),
             'restaurant': "Neural Noms",
@@ -96,6 +101,7 @@ def get_game_state():
         }
     return jsonify(user_states[email])
 
+# ✅ Handle gameplay message
 @app.route('/api/message', methods=['POST'])
 @token_required
 def handle_message():
@@ -121,10 +127,9 @@ def handle_message():
 
     state = user_states[email]
 
-    # ✅ Very basic mock AI response
+    # ✅ Example logic hook
     ai_response = f"You said: '{message}'. The chef nods thoughtfully."
 
-    # Example: change state if keyword detected
     if "cook" in message.lower():
         state['money'] += 5.00
         ai_response += " You cooked a dish and earned $5!"
