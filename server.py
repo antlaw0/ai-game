@@ -6,7 +6,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.dialects.postgresql import JSON
 from extensions import db
 from models import UserGameState
-
+import requests
 SECRET_KEY = os.getenv('SECRET_KEY', 'default-secret')
 
 app = Flask(__name__)
@@ -16,7 +16,8 @@ db = SQLAlchemy(app)
 
 
 
-
+TOGETHER_API_KEY = os.getenv('TOGETHER_API_KEY')
+TOGETHER_API_URL = "https://api.together.xyz/v1/chat/completions"
 
 # ✅ Token verification decorator
 def token_required(f):
@@ -117,6 +118,7 @@ def get_game_state():
         db.session.commit()
 
     return jsonify(game_state.state)
+
 # ✅ Handle gameplay message
 @app.route('/api/message', methods=['POST'])
 @token_required
@@ -134,24 +136,42 @@ def handle_message():
 
     state = game_state.state
 
-    # Basic mock AI response
-    ai_response = f"You said: '{message}'. The chef nods thoughtfully."
+    # 🧠 Make request to TogetherAI
+    try:
+        response = requests.post(
+            TOGETHER_API_URL,
+            headers={
+                "Authorization": f"Bearer {TOGETHER_API_KEY}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": "mistralai/Mixtral-8x7B-Instruct-v0.1",
+                "messages": [
+                    {"role": "system", "content": "You are a helpful cooking simulator AI chef assistant."},
+                    {"role": "user", "content": message}
+                ],
+                "max_tokens": 256,
+                "temperature": 0.7
+            }
+        )
+        response.raise_for_status()
+        ai_content = response.json()['choices'][0]['message']['content']
+    except Exception as e:
+        return jsonify({'error': f'AI request failed: {str(e)}'}), 500
 
-    # Example: change state if keyword detected
+    # Optionally update state
     if "cook" in message.lower():
         state['money'] += 5.00
-        ai_response += " You cooked a dish and earned $5!"
-
     if "next day" in message.lower():
         state['day'] += 1
-        ai_response += f" It is now day {state['day']}."
 
     game_state.state = state
     db.session.commit()
 
     return jsonify({
-        'response': ai_response,
+        'response': ai_content,
         'new_state': state
     })
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
