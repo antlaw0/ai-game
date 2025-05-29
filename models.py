@@ -1,6 +1,7 @@
-from server import db
+# models.py
+from extensions import db
 
 class UserGameState(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.String, unique=True, nullable=False)
-    state = db.Column(db.JSON, nullable=False)
+    user_id = db.Column(db.Integer, unique=True, nullable=False)
+    game_state = db.Column(db.Text)  # or JSON depending on usage

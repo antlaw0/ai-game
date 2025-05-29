@@ -3,8 +3,9 @@ import jwt
 import os
 from functools import wraps
 from flask_sqlalchemy import SQLAlchemy
-from models import UserGameState
 from sqlalchemy.dialects.postgresql import JSON
+from extensions import db
+from models import UserGameState
 
 SECRET_KEY = os.getenv('SECRET_KEY', 'default-secret')
 
