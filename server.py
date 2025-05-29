@@ -2,10 +2,17 @@ from flask import Flask, render_template, redirect, url_for, request, make_respo
 import jwt
 import os
 from functools import wraps
-
+from flask_sqlalchemy import SQLAlchemy
 SECRET_KEY = os.getenv('SECRET_KEY', 'default-secret')
 
 app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('NEON_DB_URL')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
+
+
+from models import UserGameState
+
 
 # ✅ Token verification decorator
 def token_required(f):
@@ -86,10 +93,12 @@ def get_user_data():
 @app.route('/api/state', methods=['POST'])
 @token_required
 def get_game_state():
-    email = request.user.get('email')
-    if email not in user_states:
-        user_states[email] = {
-            'player': email.split('@')[0].capitalize(),
+    user_id = request.user.get('id')
+    game_state = UserGameState.query.filter_by(user_id=user_id).first()
+
+    if not game_state:
+        default_state = {
+            'player': request.user.get('email').split('@')[0].capitalize(),
             'restaurant': "Neural Noms",
             'day': 1,
             'money': 200.00,
@@ -99,37 +108,32 @@ def get_game_state():
                 'Basil': 5
             }
         }
-    return jsonify(user_states[email])
+        game_state = UserGameState(user_id=user_id, state=default_state)
+        db.session.add(game_state)
+        db.session.commit()
 
+    return jsonify(game_state.state)
 # ✅ Handle gameplay message
 @app.route('/api/message', methods=['POST'])
 @token_required
 def handle_message():
-    email = request.user.get('email')
+    user_id = request.user.get('id')
     message = request.json.get('message', '').strip()
 
     if not message:
         return jsonify({'error': 'No message provided'}), 400
 
-    # Ensure game state exists
-    if email not in user_states:
-        user_states[email] = {
-            'player': email.split('@')[0].capitalize(),
-            'restaurant': "Neural Noms",
-            'day': 1,
-            'money': 200.00,
-            'inventory': {
-                'Tomato': 3,
-                'Cheese': 2,
-                'Basil': 5
-            }
-        }
+    game_state = UserGameState.query.filter_by(user_id=user_id).first()
 
-    state = user_states[email]
+    if not game_state:
+        return jsonify({'error': 'Game state not found'}), 404
 
-    # ✅ Example logic hook
+    state = game_state.state
+
+    # Basic mock AI response
     ai_response = f"You said: '{message}'. The chef nods thoughtfully."
 
+    # Example: change state if keyword detected
     if "cook" in message.lower():
         state['money'] += 5.00
         ai_response += " You cooked a dish and earned $5!"
@@ -138,10 +142,12 @@ def handle_message():
         state['day'] += 1
         ai_response += f" It is now day {state['day']}."
 
+    game_state.state = state
+    db.session.commit()
+
     return jsonify({
         'response': ai_response,
         'new_state': state
     })
-
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
