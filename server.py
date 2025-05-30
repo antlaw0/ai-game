@@ -12,8 +12,7 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'default-secret')
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('NEON_DB_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
-
+db.init_app(app)
 
 
 TOGETHER_API_KEY = os.getenv('TOGETHER_API_KEY')
