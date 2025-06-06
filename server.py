@@ -3,10 +3,10 @@ import jwt
 import os
 from functools import wraps
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy.dialects.postgresql import JSON
 from extensions import db
-from models import UserGameState
+from models import User
 import requests
+
 SECRET_KEY = os.getenv('SECRET_KEY', 'default-secret')
 
 app = Flask(__name__)
@@ -14,9 +14,14 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('NEON_DB_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 
+GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
+GROQ_MODEL = "llama3-70b-8192"
+REMOVED_SECRET = os.getenv('REMOVED_SECRET')  # You can hardcode for dev, but env var is safer
+GROQ_SYSTEM_PROMPT = (
+    "You are a helpful cooking simulator AI chef assistant. "
+    "Keep responses concise and game-like. Your job is to act like a game master in a table-top role-playing game where the player tells you what actions they want to take or asks questions where you respond similar to a game master would. There is a Cooking Emporium store where the player can buy all the ingrediants and cooking supplies they need to cook meals with. The player starts out owning a small, one-person food stand on a busy city street. All they start out with is a hot plate and $200 to spend. They must make 4 meals a day, breakfast, lunch, dinner, and dessert. Your main job is to evaluate the way and what they cook as if you are a judge in a cooking competition such as Iron Chef. You give them a score out of 10 for taste, technique, presentation, and creativity. Add these scores up to give them their overall score for the meal. They receive $20 multiplied by their score for the meal which is added to their total amount of money. Then the game progresses to the next meal, and so on until the end of the day where you recap their day, progress they made and then facilitate moving to the next day where they do this all again trying to get a high score and earn as much money as possible."
+)
 
-TOGETHER_API_KEY = os.getenv('TOGETHER_API_KEY')
-TOGETHER_API_URL = "https://api.together.xyz/v1/chat/completions"
 
 # ✅ Token verification decorator
 def token_required(f):
@@ -24,7 +29,6 @@ def token_required(f):
     def decorated(*args, **kwargs):
         token = None
 
-        # Try to get token from cookie or Authorization header
         if 'Authorization' in request.headers:
             auth_header = request.headers['Authorization']
             parts = auth_header.split()
@@ -38,7 +42,7 @@ def token_required(f):
 
         try:
             payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
-            request.user = payload  # Attach decoded payload to request
+            request.user = payload
         except jwt.ExpiredSignatureError:
             return jsonify({'error': 'Token expired'}), 401
         except jwt.InvalidTokenError:
@@ -46,11 +50,6 @@ def token_required(f):
 
         return f(*args, **kwargs)
     return decorated
-
-# ✅ In-memory game state (for dev/testing)
-user_states = {}
-
-# ✅ Routes
 
 @app.route('/')
 def index():
@@ -67,8 +66,8 @@ def login_page():
 @app.route('/dashboard')
 @token_required
 def dashboard():
-    user_email = request.user.get('email')
-    return render_template('dashboard.html', user={'email': user_email})
+    user_id = request.user.get('user_id')
+    return render_template('dashboard.html', user={'id': user_id})
 
 @app.route('/logout')
 def logout():
@@ -81,28 +80,31 @@ def logout():
 def game():
     return render_template('game.html')
 
-# ✅ Simple user data
 @app.route('/api/user-data')
 @token_required
 def get_user_data():
-    email = request.user.get('email')
+    user_id = request.user.get('user_id')
     data = {
-        'email': email,
+        'user_id': user_id,
         'favorite_recipes': ['AI Salad Supreme', 'Neural Noodles'],
         'experience_level': 'Sous Chef'
     }
     return jsonify(data)
 
-# ✅ Get game state
 @app.route('/api/state', methods=['POST'])
 @token_required
 def get_game_state():
-    user_id = request.user.get('id')
-    game_state = UserGameState.query.filter_by(user_id=user_id).first()
+    user_id = request.user.get('user_id')
+    user = User.query.get(user_id)
 
-    if not game_state:
+    if not user:
+        user = User(id=user_id, game_state=None, inventory={}, money=0.0, day=1)
+        db.session.add(user)
+        db.session.commit()
+
+    if not user.game_state:
         default_state = {
-            'player': request.user.get('email').split('@')[0].capitalize(),
+            'player': f'Chef{user_id}',
             'restaurant': "Neural Noms",
             'day': 1,
             'money': 200.00,
@@ -112,59 +114,89 @@ def get_game_state():
                 'Basil': 5
             }
         }
-        game_state = UserGameState(user_id=user_id, state=default_state)
-        db.session.add(game_state)
+        user.game_state = default_state
+        user.inventory = default_state['inventory']
+        user.money = default_state['money']
+        user.day = default_state['day']
         db.session.commit()
 
-    return jsonify(game_state.state)
+    return jsonify(user.game_state)
 
-# ✅ Handle gameplay message
 @app.route('/api/message', methods=['POST'])
 @token_required
 def handle_message():
-    user_id = request.user.get('id')
+    user_id = request.user.get('user_id')
     message = request.json.get('message', '').strip()
+    print("Sending to Groq:", message)
 
     if not message:
         return jsonify({'error': 'No message provided'}), 400
 
-    game_state = UserGameState.query.filter_by(user_id=user_id).first()
+    user = User.query.get(user_id)
 
-    if not game_state:
+    if not user or not user.game_state:
         return jsonify({'error': 'Game state not found'}), 404
 
-    state = game_state.state
+    state = user.game_state
 
-    # 🧠 Make request to TogetherAI
+    # 🧠 Call Groq API
     try:
         response = requests.post(
-            TOGETHER_API_URL,
+            GROQ_API_URL,
             headers={
-                "Authorization": f"Bearer {TOGETHER_API_KEY}",
+                "Authorization": f"Bearer {REMOVED_SECRET}",
                 "Content-Type": "application/json"
             },
             json={
-                "model": "mistralai/Mixtral-8x7B-Instruct-v0.1",
+                "model": GROQ_MODEL,
                 "messages": [
-                    {"role": "system", "content": "You are a helpful cooking simulator AI chef assistant."},
-                    {"role": "user", "content": message}
+                    {
+                        "role": "system",
+                        "content": GROQ_SYSTEM_PROMPT
+                    },
+                    {
+                        "role": "user",
+                        "content": message
+                    }
                 ],
+                "temperature": 0.7,
                 "max_tokens": 256,
-                "temperature": 0.7
+                "top_p": 1,
+                "stream": False
             }
         )
-        response.raise_for_status()
-        ai_content = response.json()['choices'][0]['message']['content']
-    except Exception as e:
-        return jsonify({'error': f'AI request failed: {str(e)}'}), 500
 
-    # Optionally update state
+        # ✅ Handle non-200 responses from Groq
+        if response.status_code != 200:
+            try:
+                error_detail = response.json()
+            except ValueError:
+                error_detail = {"message": "Invalid JSON returned from Groq."}
+
+            print("Groq API Error:", error_detail)
+            return jsonify({
+                'error': 'Groq API request failed',
+                'status_code': response.status_code,
+                'detail': error_detail
+            }), 500
+
+        ai_content = response.json()['choices'][0]['message']['content']
+
+    except requests.exceptions.RequestException as e:
+        print("RequestException:", str(e))
+        return jsonify({'error': f'Network or request error: {str(e)}'}), 500
+
+    except Exception as e:
+        print("Unhandled Exception:", str(e))
+        return jsonify({'error': f'Unexpected error: {str(e)}'}), 500
+
+    # 🔄 Update game state based on user message
     if "cook" in message.lower():
         state['money'] += 5.00
     if "next day" in message.lower():
         state['day'] += 1
 
-    game_state.state = state
+    user.game_state = state
     db.session.commit()
 
     return jsonify({
@@ -172,5 +204,6 @@ def handle_message():
         'new_state': state
     })
 
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=5001, debug=True)

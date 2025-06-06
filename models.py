@@ -1,7 +1,11 @@
-# models.py
 from extensions import db
+from sqlalchemy.dialects.postgresql import JSON
 
-class UserGameState(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, unique=True, nullable=False)
-    game_state = db.Column(db.Text)  # or JSON depending on usage
+class User(db.Model):
+    __tablename__ = 'users'
+
+    id = db.Column(db.String, primary_key=True)
+    game_state = db.Column(JSON)
+    inventory = db.Column(JSON)
+    money = db.Column(db.Float, default=0.0)
+    day = db.Column(db.Integer, default=1)

@@ -119,7 +119,9 @@
     ariaDone.textContent = "";
 
     try {
-      const response = await fetch("/api/message", {
+      console.log('Token being sent to server:', token);
+
+	  const response = await fetch("/api/message", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
