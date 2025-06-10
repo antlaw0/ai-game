@@ -129,7 +129,7 @@ def register_user():
         return {"error": "Invalid token returned from account management server"}, 500
 
     # 3. Create new User in local game DB
-    existing_user = User.query.get(str(user_id))
+    existing_user = User.query.get(user_id)
     if existing_user:
         return {"message": "User already registered in game DB"}, 200
 
@@ -150,7 +150,7 @@ def register_user():
 @app.route('/api/user-data')
 @token_required
 def get_user_data():
-    user_id = request.user.get('user_id')
+    user_id = request.user['user_id']
     data = {
         'user_id': user_id,
         'favorite_recipes': ['AI Salad Supreme', 'Neural Noodles'],
@@ -161,8 +161,8 @@ def get_user_data():
 @app.route('/api/state', methods=['POST'])
 @token_required
 def get_game_state():
-    user_id = request.user.get('user_id')
-    user = User.query.get(str(id))
+    user_id = request.user['user_id']
+    user = User.query.get(user_id)  # correct lookup
 
     if not user:
         user = User(id=user_id, game_state=None, inventory={}, money=0.0, day=1)
@@ -199,7 +199,7 @@ def handle_message():
     if not message:
         return jsonify({'error': 'No message provided'}), 400
 
-    user = User.query.get(str(id))
+    user = User.query.get(user_id)
     if not user or not user.game_state:
         return jsonify({'error': 'Game state not found'}), 404
 
