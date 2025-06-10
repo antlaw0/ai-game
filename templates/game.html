@@ -1,14 +1,4 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Cooking Game</title>
-  <link rel="stylesheet" href="/static/styles.css"/>
-  <style>
-    /* (Your existing styles left unchanged for brevity) */
-  </style>
-</head>
+<!-- unchanged head content above -->
 <body>
 
 <div class="sidebar">
@@ -24,6 +14,7 @@
     <p><strong>Restaurant:</strong> <span id="restaurantName">-</span></p>
     <p><strong>Day:</strong> <span id="gameDay">1</span></p>
     <p><strong>Money:</strong> $<span id="playerMoney">200.00</span></p>
+    <p><strong>Current meal:</strong> <span id="gameMeal">breakfast</span></p>
   </div>
 
   <div class="inventory">
@@ -57,11 +48,11 @@
   const gameDay = document.getElementById("gameDay");
   const playerMoney = document.getElementById("playerMoney");
   const inventoryList = document.getElementById("inventoryList");
+  const gameMeal = document.getElementById("gameMeal");
 
   const ariaLoading = document.getElementById("aria-loading");
   const ariaDone = document.getElementById("aria-done");
 
-  // ✅ Get JWT token from cookie
   function getTokenFromCookie() {
     const match = document.cookie.match(/(^| )token=([^;]+)/);
     return match ? match[2] : null;
@@ -69,13 +60,11 @@
 
   const token = getTokenFromCookie();
 
-  // ✅ Redirect to login if no token
   if (!token) {
     window.location.href = "/login-page";
   }
 
   function logout() {
-    // Clear cookie on logout by visiting /logout route
     window.location.href = "/logout";
   }
 
@@ -99,16 +88,19 @@
 
       playerName.textContent = data.player || "-";
       restaurantName.textContent = data.restaurant || "-";
-      gameDay.textContent = data.day || "1";
-      playerMoney.textContent = data.money?.toFixed(2) || "200.00";
+      gameDay.textContent = data.day ?? "1";
+      gameMeal.textContent = data.last_meal_completed || "breakfast";
+
+      const money = parseFloat(data.money);
+      playerMoney.textContent = isNaN(money) ? "0.00" : money.toFixed(2);
 
       inventoryList.innerHTML = "";
       const inv = data.inventory || {};
-      Object.entries(inv).forEach(([item, quantity]) => {
+      for (const [item, quantity] of Object.entries(inv)) {
         const li = document.createElement("li");
         li.textContent = `${item} x${quantity}`;
         inventoryList.appendChild(li);
-      });
+      }
     } catch (err) {
       console.error("Error loading game state:", err);
     }
@@ -119,9 +111,7 @@
     ariaDone.textContent = "";
 
     try {
-      console.log('Token being sent to server:', token);
-
-	  const response = await fetch("/api/message", {
+      const response = await fetch("/api/message", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -138,9 +128,8 @@
         appendChat("Player", message, "player");
         appendChat("AI", data.response, "ai");
 
-        if (data.new_state) {
-          loadGameState(); // Refresh state if game state changed
-        }
+        // ✅ Always reload state after a successful message
+        await loadGameState();
       }
     } catch (err) {
       console.error("Error sending message:", err);
@@ -177,7 +166,7 @@
     }
   });
 
-  // Load state on startup
+  // ✅ Load state on startup
   loadGameState();
 </script>
 

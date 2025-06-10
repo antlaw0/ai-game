@@ -31,15 +31,18 @@
         const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
         const confirm = document.getElementById('confirm').value;
-
+if (password != confirm) {
+alert("Passwords do not match.")
+return;
+} 
         try {
             
-			const response = await fetch(`${API_BASE_URL}/api/register`, {
+const response = await fetch('/api/register-user', {
     method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ email, password, confirm })
+                body: JSON.stringify({ email, password })
 
 				
             });
@@ -57,6 +60,7 @@
             alert('An error occurred while registering.');
         }
     });
+	
 </script>
 
 </body>
