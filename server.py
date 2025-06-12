@@ -158,19 +158,21 @@ def get_game_state():
 
     user = User.query.get(user_id)
 
+    # Default state if user doesn't exist
+    default_state = {
+        'player': f'Chef{user_id}',
+        'restaurant': "Neural Noms",
+        'day': 1,
+        'money': 200.00,
+        'inventory': {
+            'tomato': 3,
+            'cheese': 2,
+            'basil': 5
+        },
+        'last_meal_completed': 'breakfast'
+    }
+
     if not user:
-        default_state = {
-            'player': f'Chef{user_id}',
-            'restaurant': "Neural Noms",
-            'day': 1,
-            'money': 200.00,
-            'inventory': {
-                'Tomato': 3,
-                'Cheese': 2,
-                'Basil': 5
-            },
-            'last_meal_completed': 'breakfast'
-        }
         user = User(
             id=user_id,
             user_id=user_id,
@@ -183,30 +185,27 @@ def get_game_state():
         )
         db.session.add(user)
         db.session.commit()
+    else:
+        # Ensure game_state is initialized if missing
+        if not user.game_state:
+            user.game_state = default_state
+            user.inventory = default_state['inventory']
+            user.money = default_state['money']
+            user.day = default_state['day']
+            user.last_meal_completed = default_state['last_meal_completed']
+            db.session.commit()
 
-    # Fill missing game state (if DB entry exists but was missing game_state)
-    if not user.game_state:
-        default_state = {
-            'player': f'Chef{user_id}',
-            'restaurant': "Neural Noms",
-            'day': 1,
-            'money': 200.00,
-            'inventory': {
-                'Tomato': 3,
-                'Cheese': 2,
-                'Basil': 5
-            },
-            'last_meal_completed': 'breakfast'
-        }
-        user.game_state = default_state
-        user.inventory = default_state['inventory']
-        user.money = default_state['money']
-        user.day = default_state['day']
-        user.last_meal_completed = default_state['last_meal_completed']
-        db.session.commit()
+    # 🧠 Always return a fresh, consistent game state:
+    game_state = {
+        'player': f'Chef{user.user_id}',
+        'restaurant': "Neural Noms",
+        'day': user.day,
+        'money': user.money,
+        'inventory': {k.lower(): v for k, v in (user.inventory or {}).items()},
+        'last_meal_completed': user.last_meal_completed or "breakfast"
+    }
 
-    return jsonify(user.game_state)
-
+    return jsonify(game_state)
 
 @app.route('/api/message', methods=['POST'])
 @token_required
