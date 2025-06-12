@@ -20,48 +20,86 @@
     </form>
 
     <script type="module">
-            const API_BASE_URL = window.location.hostname === "localhost"
+        const ACCOUNT_SERVER_URL = window.location.hostname === "localhost"
             ? "http://localhost:5000"
             : "https://antlaw-games-accounts.onrender.com";
 
+        const GAME_SERVER_URL = window.location.hostname === "localhost"
+            ? "http://localhost:5001"
+            : window.location.origin;
 
-	document.getElementById('register-form').addEventListener('submit', async (event) => {
-        event.preventDefault();
+        document.getElementById('register-form').addEventListener('submit', async (event) => {
+            event.preventDefault();
 
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
-        const confirm = document.getElementById('confirm').value;
-if (password != confirm) {
-alert("Passwords do not match.")
-return;
-} 
-        try {
-            
-const response = await fetch('/api/register-user', {
-    method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ email, password })
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const confirm = document.getElementById('confirm').value;
 
-				
-            });
-
-            const result = await response.json();
-            if (response.ok) {
-                alert('Registered successfully! Please log in.');
-                window.location.href = '/login-page';
-            } else {
-                alert(result.error || result.message || 'Registration failed.');
-
+            if (password !== confirm) {
+                alert("Passwords do not match.");
+                return;
             }
-        } catch (error) {
-            console.error('Error:', error);
-            alert('An error occurred while registering.');
-        }
-    });
-	
-</script>
 
+            try {
+                // Register user with Account Server
+                const registerResponse = await fetch(`${ACCOUNT_SERVER_URL}/api/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password, confirm })
+                });
+
+                const registerResult = await registerResponse.json();
+
+                if (!registerResponse.ok) {
+                    alert(registerResult.error || registerResult.message || 'Registration failed.');
+                    return;
+                }
+
+                // Login to get token after registration
+                const loginResponse = await fetch(`${ACCOUNT_SERVER_URL}/api/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const loginResult = await loginResponse.json();
+
+                if (!loginResponse.ok || !loginResult.token) {
+                    alert(loginResult.error || loginResult.message || 'Login after registration failed.');
+                    return;
+                }
+
+                const token = loginResult.token;
+                localStorage.setItem('token', token);
+
+                // Sync user with game server
+                const gameResponse = await fetch(`${GAME_SERVER_URL}/api/register-user`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ email })
+                });
+
+                const gameResult = await gameResponse.json();
+
+                if (!gameResponse.ok) {
+                    alert(gameResult.error || gameResult.message || 'Failed to sync game user.');
+                    return;
+                }
+
+                alert('Registration complete! You may now log in.');
+                window.location.href = '/login-page';
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred during registration.');
+            }
+        });
+    </script>
 </body>
 </html>

@@ -20,29 +20,24 @@
     document.getElementById('login-form').addEventListener('submit', async (event) => {
         event.preventDefault();
 
-        const API_BASE_URL = window.location.hostname === "localhost"
-            ? "http://localhost:5000"
-            : "https://antlaw-games-accounts.onrender.com";
-
         const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
 
         try {
-            const response = await fetch(`${API_BASE_URL}/api/login`, {
+            const response = await fetch('/api/login', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ email, password }),
-                credentials: 'include'  // Include cookies if needed
+                credentials: 'include', // ✅ Enables cookies
+                body: JSON.stringify({ email, password })
             });
 
             const result = await response.json();
 
-            if (response.ok && result.token) {
-                document.cookie = `token=${result.token}; path=/; max-age=86400`;
+            if (response.ok && result.message === "Login successful") {
                 alert('Login successful!');
-                window.location.href = '/game';
+                window.location.href = '/game'; // ✅ Go to protected game page
             } else {
                 alert(result.error || 'Login failed');
             }
@@ -51,9 +46,6 @@
             alert('An error occurred while logging in.');
         }
     });
-</script>
-
-
-
+    </script>
 </body>
 </html>

@@ -53,17 +53,6 @@
   const ariaLoading = document.getElementById("aria-loading");
   const ariaDone = document.getElementById("aria-done");
 
-  function getTokenFromCookie() {
-    const match = document.cookie.match(/(^| )token=([^;]+)/);
-    return match ? match[2] : null;
-  }
-
-  const token = getTokenFromCookie();
-
-  if (!token) {
-    window.location.href = "/login-page";
-  }
-
   function logout() {
     window.location.href = "/logout";
   }
@@ -73,9 +62,9 @@
       const response = await fetch("/api/state", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
+          "Content-Type": "application/json"
         },
+        credentials: "include",
         body: JSON.stringify({})
       });
 
@@ -114,9 +103,9 @@
       const response = await fetch("/api/message", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
+          "Content-Type": "application/json"
         },
+        credentials: "include",
         body: JSON.stringify({ message })
       });
 

@@ -6,17 +6,23 @@ from flask_sqlalchemy import SQLAlchemy
 from extensions import db
 from models import User
 import requests
+import datetime
+print("Game server current UTC time:", datetime.datetime.utcnow())
 
-SECRET_KEY = os.getenv('SECRET_KEY', 'default-secret')
-
+SECRET_KEY = os.getenv('SECRET_KEY')
+if not SECRET_KEY:
+    raise ValueError("SECRET_KEY is not set in environment variables.")
+print("SECRET_KEY is "+SECRET_KEY)
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('NEON_DB_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 
+
+#Init Groq stuff
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_MODEL = "llama3-70b-8192"
-REMOVED_SECRET = os.getenv('REMOVED_SECRET')  # You can hardcode for dev, but env var is safer
 GROQ_SYSTEM_PROMPT = (
     "You are a helpful cooking simulator AI chef assistant. "
     "Act as a game master for a cooking RPG where the player owns a food stand and cooks 4 meals per day: breakfast, lunch, dinner, and dessert. "
@@ -55,7 +61,8 @@ def token_required(f):
             return jsonify({'error': 'Token is missing'}), 401
 
         try:
-            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'], options={"verify_exp": False})
+            print("Decoded token payload:", payload)
             request.user = payload
         except jwt.ExpiredSignatureError:
             return jsonify({'error': 'Token expired'}), 401
@@ -98,54 +105,38 @@ def game():
 
 @app.route("/api/register-user", methods=["POST"])
 def register_user():
-    data = request.get_json()
-    email = data.get("email")
-    password = data.get("password")
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return {"error": "Authorization header missing or invalid"}, 401
 
-    if not email or not password:
-        return {"error": "Email and password are required"}, 400
-
-    # 1. Check with Account Management Server
-    ams_url = os.getenv("ACCOUNT_MGMT_SERVER_URL", "http://localhost:5000")
+    token = auth_header.split(" ")[1]
     try:
-        response = requests.post(f"{ams_url}/api/register", json={"email": email, "password": password})
-        if response.status_code == 409:
-            return {"error": "User already exists in account management system"}, 409
-        if response.status_code != 201:
-            return {"error": "Account management server error", "details": response.json()}, 500
-        token = response.json().get("token")
-        if not token:
-            return {"error": "Registration failed: no token received"}, 500
-    except requests.RequestException as e:
-        return {"error": f"Failed to reach account management server: {str(e)}"}, 500
-
-    # 2. Decode token to get user_id
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"], options={"verify_exp": False})
         user_id = payload.get("user_id")
+        email = payload.get("email")
         if not user_id:
-            return {"error": "No user_id in token"}, 500
-    except jwt.InvalidTokenError:
-        return {"error": "Invalid token returned from account management server"}, 500
+            return {"error": "Invalid token: no user_id"}, 400
+    except jwt.InvalidTokenError as e:
+        return {"error": f"Token decode failed: {str(e)}"}, 401
 
-    # 3. Create new User in local game DB
+    # Check if user exists
     existing_user = User.query.get(user_id)
     if existing_user:
         return {"message": "User already registered in game DB"}, 200
 
     new_user = User(
         id=user_id,
+        user_id=user_id,
         last_meal_completed="breakfast",
         money=200.0,
-        inventory={"Tomato": 3, "Cheese": 2, "Basil": 5},
+        inventory={},
         day=1,
-        game_state=None
+        game_state={}
     )
     db.session.add(new_user)
     db.session.commit()
 
-    return {"message": "User registered successfully", "token": token}, 201
-
+    return {"message": "User registered successfully"}, 201
 
 @app.route('/api/user-data')
 @token_required
@@ -158,17 +149,42 @@ def get_user_data():
     }
     return jsonify(data)
 
+
 @app.route('/api/state', methods=['POST'])
 @token_required
 def get_game_state():
     user_id = request.user['user_id']
-    user = User.query.get(user_id)  # correct lookup
+    email = request.user['email']
+
+    user = User.query.get(user_id)
 
     if not user:
-        user = User(id=user_id, game_state=None, inventory={}, money=0.0, day=1)
+        default_state = {
+            'player': f'Chef{user_id}',
+            'restaurant': "Neural Noms",
+            'day': 1,
+            'money': 200.00,
+            'inventory': {
+                'Tomato': 3,
+                'Cheese': 2,
+                'Basil': 5
+            },
+            'last_meal_completed': 'breakfast'
+        }
+        user = User(
+            id=user_id,
+            user_id=user_id,
+            email=email,
+            game_state=default_state,
+            inventory=default_state['inventory'],
+            money=default_state['money'],
+            day=default_state['day'],
+            last_meal_completed=default_state['last_meal_completed']
+        )
         db.session.add(user)
         db.session.commit()
 
+    # Fill missing game state (if DB entry exists but was missing game_state)
     if not user.game_state:
         default_state = {
             'player': f'Chef{user_id}',
@@ -179,16 +195,19 @@ def get_game_state():
                 'Tomato': 3,
                 'Cheese': 2,
                 'Basil': 5
-            }
+            },
+            'last_meal_completed': 'breakfast'
         }
         user.game_state = default_state
-        user.last_meal_completed=default_state['last_meal_completed']
         user.inventory = default_state['inventory']
         user.money = default_state['money']
         user.day = default_state['day']
+        user.last_meal_completed = default_state['last_meal_completed']
         db.session.commit()
 
     return jsonify(user.game_state)
+
+
 @app.route('/api/message', methods=['POST'])
 @token_required
 def handle_message():
@@ -219,7 +238,7 @@ def handle_message():
         response = requests.post(
             GROQ_API_URL,
             headers={
-                "Authorization": f"Bearer {REMOVED_SECRET}",
+                "Authorization": f"Bearer {GROQ_API_KEY}",
                 "Content-Type": "application/json"
             },
             json={
@@ -308,10 +327,13 @@ def login_user():
         if not token:
             return {"error": "Login succeeded but no token received"}, 500
 
-        return jsonify({"message": "Login successful", "token": token})
+        # ✅ SET COOKIE HERE
+        resp = make_response(jsonify({"message": "Login successful"}))
+        resp.set_cookie('token', token, httponly=True, secure=False)  # Set secure=True in production
+        return resp
+
     except requests.RequestException as e:
         return {"error": f"Failed to reach account management server: {str(e)}"}, 500
-
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001, debug=True)
