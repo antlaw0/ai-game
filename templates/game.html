@@ -61,9 +61,7 @@
     try {
       const response = await fetch("/api/state", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({})
       });
@@ -102,14 +100,20 @@
     try {
       const response = await fetch("/api/message", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ message })
       });
 
-      const data = await response.json();
+      const text = await response.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        console.error("Invalid JSON response:", text);
+        appendChat("System", "Unexpected server error.", "error");
+        return;
+      }
 
       if (data.error) {
         appendChat("System", "Error: " + data.error, "error");
@@ -117,7 +121,6 @@
         appendChat("Player", message, "player");
         appendChat("AI", data.response, "ai");
 
-        // ✅ Always reload state after a successful message
         await loadGameState();
       }
     } catch (err) {
@@ -155,7 +158,6 @@
     }
   });
 
-  // ✅ Load state on startup
   loadGameState();
 </script>
 
