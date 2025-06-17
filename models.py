@@ -13,3 +13,4 @@ class User(db.Model):
     money = db.Column(db.Float, default=0.0)
     day = db.Column(db.Integer, default=1)
     last_meal_completed = db.Column(db.String, default="breakfast", nullable=False)
+    chat_history = db.Column(JSON, default=[])

@@ -37,6 +37,7 @@
 
             if (response.ok && result.message === "Login successful") {
                 //alert('Login successful!');
+				    localStorage.setItem('token', result.token);  // ✅ Save it
                 window.location.href = '/game'; // ✅ Go to protected game page
             } else {
                 alert(result.error || 'Login failed');

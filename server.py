@@ -1,5 +1,4 @@
-from flask import Flask, render_template, redirect, url_for, request, make_response, jsonify
-from routes import blueprints
+from flask import g, Flask, render_template, redirect, url_for, request, make_response, jsonify
 import jwt
 import os
 from functools import wraps
@@ -9,7 +8,11 @@ from models import User
 import requests
 import datetime
 import json
-print("Game server current UTC time:", datetime.datetime.utcnow())
+from sqlalchemy.pool import QueuePool
+from sqlalchemy import create_engine
+from sqlalchemy.pool import NullPool
+print("Game server current UTC time:", datetime.datetime.now(datetime.timezone.utc))
+
 
 SECRET_KEY = os.getenv('SECRET_KEY')
 if not SECRET_KEY:
@@ -18,6 +21,10 @@ print("SECRET_KEY is "+SECRET_KEY)
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('NEON_DB_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    'pool_pre_ping': True,
+    'pool_recycle': 1800  # 30 minutes
+}
 db.init_app(app)
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
@@ -54,7 +61,13 @@ GROQ_SYSTEM_PROMPT = (
     "- If they do not have enough money, cancel the transaction and explain.\n"
     "- Always maintain consistent pricing throughout the game.\n\n"
 
-    "**Important**: Your **entire response must be a single valid JSON object**, with no text outside it.\n\n"
+    "**Response Format Requirements**:\n"
+    "- Your entire response MUST be a single valid JSON object.\n"
+    "- DO NOT include any text outside of the JSON object.\n"
+    "- DO NOT use markdown formatting (no triple backticks).\n"
+    "- DO NOT include explanations, greetings, or commentary before or after the JSON.\n"
+    "- All narration, pricing, and player interaction must be inside the JSON object's `narration` field.\n"
+    "- Never start lines with dashes (-) unless they are inside a string value in the JSON.\n"
 
     "**Example of purchasing multiple items**:\n"
     "Player: I want to buy 2 whole fresh chickens, 1 stick of butter, a basic blender, and five pounds of unbleached flour.\n"
@@ -77,34 +90,38 @@ GROQ_SYSTEM_PROMPT = (
     "  }\n"
     "}\n"
 
-    "You must return your entire response as a valid JSON object, and nothing else. "
-    "Do not use markdown syntax (like ```json). "
-    "Do not include explanation or messages outside the JSON. "
-    "Do not start lines with dashes (-) unless inside a JSON string. "
-    "Wrap the entire response in curly braces { ... }."
+    "⚠️ FINAL REMINDER: Only respond with a valid JSON object, wrapped in curly braces `{ ... }`, and nothing else. "
+    "Failure to do so will result in your response being ignored by the game system."
 )
 
 # Register all blueprints
-for bp in blueprints:
-    app.register_blueprint(bp)
+#for bp in blueprints:
+    #app.register_blueprint(bp)
 
+
+
+
+
+from functools import wraps
+from flask import request, jsonify, g
+import jwt
 
 def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        token = request.headers.get('Authorization', '').split("Bearer ")[-1] \
-            if 'Authorization' in request.headers else request.cookies.get('token')
+        token = request.cookies.get("access_token")  # ✅ From cookie, not header
+        print("Received access_token from cookie:", token)  # 👈 Add this
         if not token:
-            return jsonify({'error': 'Token is missing'}), 401
+            return jsonify({"error": "Missing authorization token"}), 401
         try:
-            payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'], options={"verify_exp": False})
-            request.user = payload
-        except jwt.ExpiredSignatureError:
-            return jsonify({'error': 'Token expired'}), 401
+            decoded = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+            #g.user_id = decoded.get("user_id")
+            g.user = decoded
         except jwt.InvalidTokenError:
-            return jsonify({'error': 'Invalid token'}), 401
+            return jsonify({"error": "Invalid token"}), 401
         return f(*args, **kwargs)
     return decorated
+
 
 @app.route('/')
 def index():
@@ -121,7 +138,7 @@ def login_page():
 @app.route('/dashboard')
 @token_required
 def dashboard():
-    return render_template('dashboard.html', user={'id': request.user.get('user_id')})
+    return render_template('dashboard.html', user={'id': g.user.get('user_id')})
 
 @app.route('/logout')
 def logout():
@@ -130,7 +147,6 @@ def logout():
     return resp
 
 @app.route('/game')
-@token_required
 def game():
     return render_template('game.html')
 
@@ -146,7 +162,7 @@ def register_user():
     except jwt.InvalidTokenError as e:
         return {"error": f"Token decode failed: {str(e)}"}, 401
 
-    existing_user = User.query.get(user_id)
+    existing_user = db.session.get(User, user_id)
     if existing_user:
         return {"message": "User already registered in game DB"}, 200
 
@@ -158,7 +174,7 @@ def register_user():
 @app.route('/api/user-data')
 @token_required
 def get_user_data():
-    user_id = request.user['user_id']
+    user_id = g.user['user_id']
     return jsonify({
         'user_id': user_id,
         'favorite_recipes': ['AI Salad Supreme', 'Neural Noodles'],
@@ -168,9 +184,9 @@ def get_user_data():
 @app.route('/api/state', methods=['POST'])
 @token_required
 def get_game_state():
-    user_id = request.user['user_id']
-    email = request.user['email']
-    user = User.query.get(user_id)
+    user_id = g.user['user_id']
+    email = g.user['email']
+    user = db.session.get(User, user_id)
 
     default_state = {
         'player': f'Chef{user_id}',
@@ -231,10 +247,203 @@ def login_user():
             return {"error": "Login succeeded but no token received"}, 500
 
         resp = make_response(jsonify({"message": "Login successful"}))
-        resp.set_cookie('token', token, httponly=True, secure=False)
+        resp.set_cookie('access_token', token, httponly=True, secure=False)
         return resp
     except requests.RequestException as e:
         return {"error": f"Failed to reach account management server: {str(e)}"}, 500
+
+
+def build_full_message(state, last_meal, message):
+    return (
+        f"Day: {state.get('day', 1)}\n"
+        f"Money: ${state.get('money', 0.00):.2f}\n"
+        f"Inventory: {state.get('inventory', {})}\n"
+        f"Last meal completed: {last_meal or 'breakfast'}\n"
+        f"User action: {message.strip()}"
+    )
+
+def trim_chat_history(history, max_tokens=4096, estimated_per_message=200, buffer=3):
+    max_history = max_tokens // estimated_per_message - buffer
+    return history[-max_history:], max_history
+
+
+
+def call_groq_api(messages):
+    response = requests.post(
+        GROQ_API_URL,
+        headers={
+            "Authorization": f"Bearer {GROQ_API_KEY}",
+            "Content-Type": "application/json"
+        },
+        json={
+            "model": GROQ_MODEL,
+            "messages": messages,
+            "temperature": 0.7,
+            "max_tokens": 512,
+            "top_p": 1,
+            "stream": False
+        }
+    )
+
+    print("Groq response status code:", response.status_code)
+    print("Groq response raw text:", repr(response.text))
+    print("Groq response JSON try:")
+    try:
+        print(json.dumps(response.json(), indent=2))
+    except Exception as e:
+        print("Failed to decode Groq response as JSON:", e)
+        print("Raw text fallback:", repr(response.text))
+
+    if response.status_code != 200:
+        raise ValueError(f"Groq API request failed with status {response.status_code}")
+
+    return response
+
+def extract_ai_json(groq_data):
+    try:
+        content = groq_data['choices'][0]['message']['content'].strip()
+        return content
+    except (KeyError, IndexError, TypeError) as e:
+        print("Groq response missing expected fields:", e)
+        print("Full Groq data:", json.dumps(groq_data, indent=2))
+        raise ValueError("Groq response missing expected fields")
+
+def parse_ai_response(ai_json):
+    try:
+        return json.loads(ai_json)
+    except json.JSONDecodeError as e:
+        print("JSON parsing failed:", e)
+        print("Invalid JSON content was:", repr(ai_json))
+        raise ValueError(f"Invalid JSON from AI: {str(e)}")
+
+def apply_game_updates(user, parsed, message):
+    state = user.game_state
+    narration = parsed.get('narration', '')
+    should_apply = 'Would you like to proceed with the purchase?' not in narration or 'yes' in message.lower()
+
+    earned = parsed.get('money_earned', 0)
+    state['money'] = state.get('money', 0.0) + earned
+    user.money = state['money']
+
+    if parsed.get('meal_completed'):
+        user.last_meal_completed = parsed['meal_completed']
+
+    if parsed.get('day_increment', False):
+        state['day'] = state.get('day', 1) + 1
+        user.last_meal_completed = 'breakfast'
+
+    if should_apply:
+        inventory_changes = parsed.get('inventory_changes', {})
+        inventory = state.setdefault('inventory', {})
+        for item, change in inventory_changes.items():
+            try:
+                inventory[item] = inventory.get(item, 0) + int(change)
+            except (ValueError, TypeError):
+                continue
+        user.inventory = inventory
+
+    return narration, earned, state
+
+
+def process_player_message(user, message):
+    full_message = build_full_message(user.game_state, user.last_meal_completed, message)
+    history = user.chat_history or []
+    history.append({"role": "user", "content": full_message})
+    trimmed_history, max_history = trim_chat_history(history)
+
+    messages = [{"role": "system", "content": GROQ_SYSTEM_PROMPT}] + trimmed_history
+    groq_response = call_groq_api(messages)
+
+    ai_json = extract_ai_json(groq_response.json())
+    parsed = parse_ai_response(ai_json)
+
+    narration, earned, new_state = apply_game_updates(user, parsed, message)
+    trimmed_history.append({"role": "assistant", "content": narration})
+    user.chat_history = trimmed_history[-max_history:]
+    user.game_state = new_state
+
+    return narration, earned, new_state
+
+
+@app.route("/api/message", methods=["POST"])
+@token_required
+def message():
+    data = request.get_json()
+    user_id = g.user['user_id']
+    user = db.session.get(User, user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    player_message = data.get("message", "").strip()
+    if not player_message:
+        return jsonify({"error": "No message provided"}), 400
+
+    system_prompt = GROQ_SYSTEM_PROMPT
+    state_summary = (
+        f"Current game state:\n"
+        f"Money: ${user.money}\n"
+        f"Inventory: {json.dumps(user.inventory or {})}\n"
+        f"Day: {user.day}\n"
+        f"Last meal completed: {user.last_meal_completed or 'breakfast'}\n"
+    )
+
+    history_summary = "\n".join([
+    f"User: {entry.get('user', '[missing]')}\nAI: {entry.get('ai', '[missing]')}"
+    for entry in user.chat_history[-5:] if isinstance(entry, dict)
+]) if user.chat_history else ""
+
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "system", "content": state_summary}
+    ]
+
+    # Include chat history (past user/AI turns) for memory continuity
+    if history_summary:
+        messages.append({"role": "system", "content": f"Recent chat history:\n{history_summary}"})
+
+    # Add current user message
+    messages.append({"role": "user", "content": player_message})
+
+    payload = {
+        "messages": messages,
+        "model": "llama3-70b-8192",
+        "temperature": 0.2,
+        "max_tokens": 1024,
+    }
+
+    response = requests.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers={
+            "Authorization": f"Bearer {GROQ_API_KEY}",
+            "Content-Type": "application/json",
+        },
+        json=payload,
+    )
+
+    if response.status_code != 200:
+        return jsonify({"error": "Groq API failed"}), 500
+
+    try:
+        response_json = response.json()
+        ai_content = response_json["choices"][0]["message"]["content"].strip()
+        print("AI raw content:  ", ai_content)
+        parsed = json.loads(ai_content)
+        print("AI parsed content:  ", parsed)
+    except Exception as e:
+        app.logger.error("Groq JSON parsing failed: %s", e)
+        app.logger.error("Invalid Groq content: %s", ai_content)
+        return jsonify({
+            "error": "AI response was invalid JSON.",
+            "ai_response": ai_content,
+            "fallback_narration": "Oops! The AI got a little scrambled and didn't return a valid response. Try asking again."
+        }), 500
+
+    # Save chat history
+    user.chat_history.append({"user": player_message, "ai": parsed})
+    db.session.commit()
+
+    return jsonify(parsed)
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001, debug=True)

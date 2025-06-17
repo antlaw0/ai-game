@@ -119,8 +119,7 @@
         appendChat("System", "Error: " + data.error, "error");
       } else {
         appendChat("Player", message, "player");
-        appendChat("AI", data.response, "ai");
-
+        appendChat("AI", data.narration || "(No response)", "ai");
         await loadGameState();
       }
     } catch (err) {

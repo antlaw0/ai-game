@@ -1,6 +1,4 @@
-C:\Users\alawl\Desktop\Game Dev Projects\AI Game\ai-game\server.py:13: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
-  print("Game server current UTC time:", datetime.datetime.utcnow())
-Game server current UTC time: 2025-06-15 10:48:46.096035
+Game server current UTC time: 2025-06-17 19:03:50.464332+00:00
 SECRET_KEY is b7f3c9e1f91f4ac0e92f0b29c3b2db71a6452e92f2a4b8db15cbb2dc5d7e11ab
  * Serving Flask app 'server'
  * Debug mode: on
@@ -10,60 +8,38 @@ WARNING: This is a development server. Do not use it in a production deployment.
  * Running on http://192.168.12.239:5001
 Press CTRL+C to quit
  * Restarting with stat
-C:\Users\alawl\Desktop\Game Dev Projects\AI Game\ai-game\server.py:13: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
-  print("Game server current UTC time:", datetime.datetime.utcnow())
  * Debugger is active!
  * Debugger PIN: 301-864-230
- * Detected change in 'C:\\Users\\alawl\\Desktop\\Game Dev Projects\\AI Game\\ai-game\\message_root.py', reloading
-Game server current UTC time: 2025-06-15 10:48:46.797803
+127.0.0.1 - - [17/Jun/2025 14:04:33] "GET /login-page HTTP/1.1" 200 -
+127.0.0.1 - - [17/Jun/2025 14:04:43] "POST /api/login HTTP/1.1" 200 -
+127.0.0.1 - - [17/Jun/2025 14:04:43] "GET /game HTTP/1.1" 200 -
+127.0.0.1 - - [17/Jun/2025 14:04:45] "POST /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [17/Jun/2025 14:04:59] "POST /api/message HTTP/1.1" 200 -
+127.0.0.1 - - [17/Jun/2025 14:05:00] "POST /api/state HTTP/1.1" 200 -
+127.0.0.1 - - [17/Jun/2025 14:05:12] "POST /api/message HTTP/1.1" 200 -
+127.0.0.1 - - [17/Jun/2025 14:05:12] "POST /api/state HTTP/1.1" 200 -
+Game server current UTC time: 2025-06-17 19:03:51.185018+00:00
 SECRET_KEY is b7f3c9e1f91f4ac0e92f0b29c3b2db71a6452e92f2a4b8db15cbb2dc5d7e11ab
- * Restarting with stat
-C:\Users\alawl\Desktop\Game Dev Projects\AI Game\ai-game\server.py:13: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
-  print("Game server current UTC time:", datetime.datetime.utcnow())
- * Debugger is active!
- * Debugger PIN: 301-864-230
- * Detected change in 'C:\\Users\\alawl\\Desktop\\Game Dev Projects\\AI Game\\ai-game\\routes\\__init__.py', reloading
-Game server current UTC time: 2025-06-15 11:51:51.247775
-SECRET_KEY is b7f3c9e1f91f4ac0e92f0b29c3b2db71a6452e92f2a4b8db15cbb2dc5d7e11ab
- * Restarting with stat
-C:\Users\alawl\Desktop\Game Dev Projects\AI Game\ai-game\server.py:13: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
-  print("Game server current UTC time:", datetime.datetime.utcnow())
- * Debugger is active!
- * Debugger PIN: 301-864-230
- * Detected change in 'C:\\Users\\alawl\\Desktop\\Game Dev Projects\\AI Game\\ai-game\\server.py', reloading
-Game server current UTC time: 2025-06-15 11:57:58.087864
-SECRET_KEY is b7f3c9e1f91f4ac0e92f0b29c3b2db71a6452e92f2a4b8db15cbb2dc5d7e11ab
- * Restarting with stat
-C:\Users\alawl\Desktop\Game Dev Projects\AI Game\ai-game\server.py:12: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
-  print("Game server current UTC time:", datetime.datetime.utcnow())
- * Debugger is active!
- * Debugger PIN: 301-864-230
- * Detected change in 'C:\\Users\\alawl\\Desktop\\Game Dev Projects\\AI Game\\ai-game\\server.py', reloading
-Game server current UTC time: 2025-06-15 12:25:55.789524
-SECRET_KEY is b7f3c9e1f91f4ac0e92f0b29c3b2db71a6452e92f2a4b8db15cbb2dc5d7e11ab
- * Restarting with stat
-C:\Users\alawl\Desktop\Game Dev Projects\AI Game\ai-game\server.py:12: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
-  print("Game server current UTC time:", datetime.datetime.utcnow())
- * Debugger is active!
- * Debugger PIN: 301-864-230
- * Detected change in 'C:\\Users\\alawl\\Desktop\\Game Dev Projects\\AI Game\\ai-game\\server.py', reloading
-Game server current UTC time: 2025-06-15 12:27:13.774830
-SECRET_KEY is b7f3c9e1f91f4ac0e92f0b29c3b2db71a6452e92f2a4b8db15cbb2dc5d7e11ab
- * Restarting with stat
-C:\Users\alawl\Desktop\Game Dev Projects\AI Game\ai-game\server.py:12: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
-  print("Game server current UTC time:", datetime.datetime.utcnow())
- * Debugger is active!
- * Debugger PIN: 301-864-230
- * Detected change in 'C:\\Users\\alawl\\Desktop\\Game Dev Projects\\AI Game\\ai-game\\routes\\message.py', reloading
-Game server current UTC time: 2025-06-15 12:30:04.085796
-SECRET_KEY is b7f3c9e1f91f4ac0e92f0b29c3b2db71a6452e92f2a4b8db15cbb2dc5d7e11ab
- * Restarting with stat
-Traceback (most recent call last):
-  File "C:\Users\alawl\Desktop\Game Dev Projects\AI Game\ai-game\server.py", line 2, in <module>
-    from routes import blueprints
-  File "C:\Users\alawl\Desktop\Game Dev Projects\AI Game\ai-game\routes\__init__.py", line 1, in <module>
-    from .message import message_bp
-  File "C:\Users\alawl\Desktop\Game Dev Projects\AI Game\ai-game\routes\message.py", line 5, in <module>
-    @app.route('/api/message', methods=['POST'])
-     ^^^
-NameError: name 'app' is not defined
+Received access_token from cookie: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo3LCJlbWFpbCI6ImFudGxhdzBAZ21haWwuY29tIiwiZXhwIjoxNzUwMjczNDgzfQ.TVNMByKB2KoZjGgLu63vfjVaAZBerK-J7FHx6elpo5s
+Received access_token from cookie: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo3LCJlbWFpbCI6ImFudGxhdzBAZ21haWwuY29tIiwiZXhwIjoxNzUwMjczNDgzfQ.TVNMByKB2KoZjGgLu63vfjVaAZBerK-J7FHx6elpo5s
+AI raw content:   {
+  "narration": "Here's the price breakdown:\n  - 4 oranges = $2 ($0.50 each)\nTotal: $2. You currently have $200. After this purchase, you'll have $198. Would you like to proceed with the purchase?",
+  "money_earned": 0,
+  "meal_completed": "none",
+  "day_increment": false,
+  "inventory_changes": {
+    "Oranges": 4
+  }
+}
+AI parsed content:   {'narration': "Here's the price breakdown:\n  - 4 oranges = $2 ($0.50 each)\nTotal: $2. You currently have $200. After this purchase, you'll have $198. Would you like to proceed with the purchase?", 'money_earned': 0, 'meal_completed': 'none', 'day_increment': False, 'inventory_changes': {'Oranges': 4}}
+Received access_token from cookie: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo3LCJlbWFpbCI6ImFudGxhdzBAZ21haWwuY29tIiwiZXhwIjoxNzUwMjczNDgzfQ.TVNMByKB2KoZjGgLu63vfjVaAZBerK-J7FHx6elpo5s
+Received access_token from cookie: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo3LCJlbWFpbCI6ImFudGxhdzBAZ21haWwuY29tIiwiZXhwIjoxNzUwMjczNDgzfQ.TVNMByKB2KoZjGgLu63vfjVaAZBerK-J7FHx6elpo5s
+AI raw content:   {
+  "narration": "Let's start the day! You have $200 and a small inventory of tomatoes, cheese, and basil. Describe your breakfast dish.",
+  "money_earned": 0,
+  "meal_completed": "none",
+  "day_increment": false,
+  "inventory_changes": {}
+}
+AI parsed content:   {'narration': "Let's start the day! You have $200 and a small inventory of tomatoes, cheese, and basil. Describe your breakfast dish.", 'money_earned': 0, 'meal_completed': 'none', 'day_increment': False, 'inventory_changes': {}}
+Received access_token from cookie: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo3LCJlbWFpbCI6ImFudGxhdzBAZ21haWwuY29tIiwiZXhwIjoxNzUwMjczNDgzfQ.TVNMByKB2KoZjGgLu63vfjVaAZBerK-J7FHx6elpo5s
