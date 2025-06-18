@@ -11,13 +11,17 @@ import json
 from sqlalchemy.pool import QueuePool
 from sqlalchemy import create_engine
 from sqlalchemy.pool import NullPool
+import json
+import re
+from flask import jsonify
+
 print("Game server current UTC time:", datetime.datetime.now(datetime.timezone.utc))
 
 
 SECRET_KEY = os.getenv('SECRET_KEY')
 if not SECRET_KEY:
     raise ValueError("SECRET_KEY is not set in environment variables.")
-print("SECRET_KEY is "+SECRET_KEY)
+#print("SECRET_KEY is "+SECRET_KEY)
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('NEON_DB_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -25,78 +29,137 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     'pool_pre_ping': True,
     'pool_recycle': 1800  # 30 minutes
 }
+
+@app.before_request
+def before_request_log():
+    safe_log(f"--> Incoming request: {request.method} {request.path}")
+    if request.is_json:
+        safe_log("Request JSON:", request.get_json())
+
+@app.after_request
+def after_request_log(response):
+    safe_log(f"<-- Response status: {response.status}")
+    return response
+
 db.init_app(app)
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_MODEL = "llama3-70b-8192"
-GROQ_SYSTEM_PROMPT = (
-    "You are a highly skilled cooking simulator AI and act as a game master for a culinary RPG. "
-    "The player runs a food stand and must cook four meals per day: breakfast, lunch, dinner, and dessert. "
-    "For each meal, the player describes what they made and how they prepared it. "
-    "You are a judge in a cooking competition, drawing inspiration from Iron Chef, Gordon Ramsay, and Julia Child. "
-    "Base your scoring and feedback on expert-level knowledge of flavor pairing, proper cooking techniques, classical and modern presentation, and originality. "
+GROQ_SYSTEM_PROMPT = """
+You are the AI game master for a restaurant management and cooking simulation game.
 
-    "Each completed meal is scored in the following categories (0–10):\n"
-    "- Taste: Does the meal sound flavorful, balanced, and well-seasoned?\n"
-    "- Technique: Did the player use proper cooking methods and demonstrate skill?\n"
-    "- Presentation: Is the meal described in a way that evokes an appealing visual image?\n"
-    "- Creativity: Is the dish original, clever, or inspired?\n"
+Your job is to guide the player through each in-game day by responding to their messages in two parts:
+    
+1. A vivid and short narration of what happens.
+2. A valid JSON object wrapped in <json>...</json> tags.
 
-    "Add these scores to make a total score (0–40). "
-    "The player earns $20 times their total score, which is added to their total money. "
+The JSON must include:
+- narration: A 1–2 sentence summary of what the player did and the outcome based on the Game Rules listed later in this system prompt.
+- updates: An object with fields like money, inventory, day, last_meal_completed, etc.
+Always ensure the <json> block contains a complete and valid JSON object. Do not forget to close all brackets.
+Example format (after player submits their meal description and actions such as:  I combine flour and eggs to form the pancake batter. I then cook the pancakes on the griddle until golden brown. I top with blueberry preserves with maple syrup and serve.):
 
-    "Give helpful, constructive feedback based on professional culinary standards. Avoid overpraise for basic meals and provide meaningful suggestions. "
-    "After each meal, update the game state. After dessert, summarize the day and increment the in-game day number. "
+<json>
+{
+  "narration": "You prepare a delicious stack of pancakes with syrup and berries.
+Evaluation:  
+Taste:  7/10-  The pancakes are fluffy and cooked to perfection.
+Technique:  6/10- Execution was well done but you could have mixed dry and wet ingredients     separately before combining.
+Presentation:  8/10-  The pancakes topped with the blueberries look pleasing to the eye and the colors work well together to enhance the culinary experience.
+Creativity:  5/10- These are standard blueberry pancakes. You could have applied some unique twist on this classic dish.
+Total score:  26/40
+Well done. With a score of 26, you earn $520. 
 
-    "**Purchasing Rules**:\n"
-    "- The player may purchase any realistic food ingredient, cooking tool, or kitchen equipment commonly found in modern times.\n"
-    "- Players are not limited to a preset list of items.\n"
-    "- Purchases must follow realistic pricing rules and money tracking.\n"
-    "- Players may request one or more items in a single message.\n"
-    "- Provide a full breakdown of each item’s quantity and cost.\n"
-    "- Then show the total cost and their current balance.\n"
-    "- Before completing the purchase, ask inside the JSON **narration**: 'Would you like to proceed with the purchase?'\n"
-    "- ONLY complete the transaction if the player clearly says yes.\n"
-    "- If they do not have enough money, cancel the transaction and explain.\n"
-    "- Always maintain consistent pricing throughout the game.\n\n"
+",
+  "updates": {
+    "money": "+520.0",
+    "inventory": {
+      "flour": "-1",
+      "eggs": "-2"
+    },
+    "day": 2,
+    "last_meal_completed": "breakfast"
+  }
+}
+}
+</json>
 
-    "**Response Format Requirements**:\n"
-    "- Your entire response MUST be a single valid JSON object.\n"
-    "- DO NOT include any text outside of the JSON object.\n"
-    "- DO NOT use markdown formatting (no triple backticks).\n"
-    "- DO NOT include explanations, greetings, or commentary before or after the JSON.\n"
-    "- All narration, pricing, and player interaction must be inside the JSON object's `narration` field.\n"
-    "- Never start lines with dashes (-) unless they are inside a string value in the JSON.\n"
+Do not include any commentary or explanation outside of the narration and JSON. As for the inventory inside the json, the "-+" and "-2" indicate that the inventory item should be reduced or increased by that amount, "+" increase and "-" decrease. If an item quantity reaches 0 or less, remove that item from the inventory list. As for the money, the "+" indicates you add that amount to the player's current money value and a "-" means you decrease the player's money by that amount. Ensure these numbers are a string and not an integer or float in the json.
+### Rules:
 
-    "**Example of purchasing multiple items**:\n"
-    "Player: I want to buy 2 whole fresh chickens, 1 stick of butter, a basic blender, and five pounds of unbleached flour.\n"
-    "AI response:\n"
-    "{\n"
-    "  \"narration\": \"Here's the price breakdown:\\n"
-    "  - 2 whole fresh chickens = $30 ($15 each)\\n"
-    "  - 1 stick of butter = $1\\n"
-    "  - 1 basic blender = $25\\n"
-    "  - 5 pounds of unbleached flour = $15 ($3 each)\\n"
-    "Total: $71. You currently have $200. After this purchase, you'll have $129. Would you like to proceed with the purchase?\",\n"
-    "  \"money_earned\": 0,\n"
-    "  \"meal_completed\": \"none\",\n"
-    "  \"day_increment\": false,\n"
-    "  \"inventory_changes\": {\n"
-    "    \"Whole Fresh Chicken\": 2,\n"
-    "    \"Butter\": 1,\n"
-    "    \"Blender\": 1,\n"
-    "    \"Flour (Unbleached)\": 5\n"
-    "  }\n"
-    "}\n"
+## Game Rules ##
+1. The game starts at day 1 with breakfast.
+2. After "breakfast" is completed, the next meal is "lunch", then "dinner".
+3. Completing "dinner" advances the day by 1 and resets the meal to "breakfast".
+4. Prices and money must be respected. Do not allow purchases the player cannot afford.
+5. If the player tries to cheat or say nonsense, respond in-character and guide them back into the game.
+6. If the player wants to buy ingredients or cooking supplies, You must give them a list of the item or items they want to purchase along with the quantity and price per quantity and then the total price for the quantity multiplied by the price per quantity. On the final line, give them the grand total of the entire purchase. It should look like this for example:
+    --- example ---
+      <json>
+      {
+      "narration":
+      "Items in your cart:
+        * 1 whole fresh chicken $25 total:  $25
+        * 3 watermelons $15 total:  $45
+        Grand Total$70
+        You have $150. After this purchase you will have $80. Would you like to proceed with this purchase? ",
+        "updates": {}
+        }
+        </json>
+        
+        
+--- end of example ---
+If the player does not have enough money for the purchase, do not let them make the purchase and tell them they do not have enough money for that transaction. This format must be followed so the player is informed of what is in their cart along with prices and you must ask them if they would like to proceed with the purchase. If they respond yes, process the purchase and tell them the purchase was successful and list the items added to their inventory and updated amount of money after the purchase.
+Here is an example response if the player has enough money and responds yes to proceeding with the transaction:
+    ## example response based on transaction ##
+    <json>
+{
+  "narration": "
+  You purchased:
+  * 1 whole fresh chicken $25 total:  $25
+        * 3 watermelons $15 total:  $45
+You pay $70 for these items.        
+        ",
+  "updates": {
+    "money": "-70",
+    "inventory": {
+      "Whole fresh chicken": "+1",
+      "Watermelon": "+3"
+    }
+    }
+}
+</json>
 
-    "⚠️ FINAL REMINDER: Only respond with a valid JSON object, wrapped in curly braces `{ ... }`, and nothing else. "
-    "Failure to do so will result in your response being ignored by the game system."
-)
+    ## end of example response ##
+7. For each meal, you are to give the player a score in certain categories as you evaluate the description of what and how they cook the meal. The categories are:
+    * Taste:  Do the flavors match well together? Did they use proper ingredients and technique to enhance taste?
+    * Technique:  Did they demonstrate cooking skill and applied knowledge and experience as they prepare the dish?
+    * Presentation:  Did they pay attention to asthetics so the meal presentation is pleasing to the eye? Did they use proper colors and textures?
+    * Creativity:  Did they demonstrate creative ways to prepare the meal, creative dish ideas, twists on classic dishes, etc.
+    Assign the player a score in each category from 1 to 10 where 1 is the worst and 10 is the best. Add up all the categories and give them a final score. The player receives money based on the score. The total money they receive should be the score multiplied by20. Then advance to the next meal for that day or if at the end of the day, give the player a brief summary of the day, advance the day count by 1 and reset the current meal to 'breakfast'. Make sure to tell the player their score you gave them in each category and why they received that score. If they did poorly for some reason in that category also give them feedback on what could have been better. Finally, tell them their final score and how much money they earned for that meal. Lastly, tell them now its time for the next meal (breakfast, lunch, or dinner).
+    8. Do not allow the player to use ingredients they do not have in their inventory. If they try to use an ingredient they do not have, do not proceed with that meal and inform them they do not have that item or ingredient and must purchase it for use. 
+    
+
+Be fun, creative, and logical.
+"""
 
 # Register all blueprints
 #for bp in blueprints:
     #app.register_blueprint(bp)
+
+import sys
+import traceback
+
+def safe_log(*args, **kwargs):
+    try:
+        msg = " ".join(str(a) for a in args)
+        sys.stdout.buffer.write((msg + "\n").encode("utf-8", errors="ignore"))
+        sys.stdout.flush()
+    except Exception as log_err:
+        with open("error_log.txt", "a", encoding="utf-8") as f:
+            f.write("Logging failed: " + str(log_err) + "\n")
+            f.write(traceback.format_exc() + "\n")
 
 
 
@@ -309,6 +372,7 @@ def extract_ai_json(groq_data):
         raise ValueError("Groq response missing expected fields")
 
 def parse_ai_response(ai_json):
+    
     try:
         return json.loads(ai_json)
     except json.JSONDecodeError as e:
@@ -365,21 +429,13 @@ def process_player_message(user, message):
     return narration, earned, new_state
 
 
-@app.route("/api/message", methods=["POST"])
-@token_required
-def message():
-    data = request.get_json()
+def get_user_from_token():
     user_id = g.user['user_id']
     user = db.session.get(User, user_id)
-    if not user:
-        return jsonify({"error": "User not found"}), 404
+    return user
 
-    player_message = data.get("message", "").strip()
-    if not player_message:
-        return jsonify({"error": "No message provided"}), 400
-
-    system_prompt = GROQ_SYSTEM_PROMPT
-    state_summary = (
+def build_state_summary(user):
+    return (
         f"Current game state:\n"
         f"Money: ${user.money}\n"
         f"Inventory: {json.dumps(user.inventory or {})}\n"
@@ -387,30 +443,34 @@ def message():
         f"Last meal completed: {user.last_meal_completed or 'breakfast'}\n"
     )
 
-    history_summary = "\n".join([
-    f"User: {entry.get('user', '[missing]')}\nAI: {entry.get('ai', '[missing]')}"
-    for entry in user.chat_history[-5:] if isinstance(entry, dict)
-]) if user.chat_history else ""
+def build_history_summary(chat_history):
+    if not chat_history:
+        return ""
+    return "\n".join([
+        f"User: {entry.get('user', '[missing]')}\nAI: {entry.get('ai', '[missing]')}"
+        for entry in chat_history[-5:] if isinstance(entry, dict)
+    ])
 
+def build_groq_payload(user, player_message):
     messages = [
-        {"role": "system", "content": system_prompt},
-        {"role": "system", "content": state_summary}
+        {"role": "system", "content": GROQ_SYSTEM_PROMPT},
+        {"role": "system", "content": build_state_summary(user)}
     ]
 
-    # Include chat history (past user/AI turns) for memory continuity
-    if history_summary:
-        messages.append({"role": "system", "content": f"Recent chat history:\n{history_summary}"})
+    history = build_history_summary(user.chat_history)
+    if history:
+        messages.append({"role": "system", "content": f"Recent chat history:\n{history}"})
 
-    # Add current user message
     messages.append({"role": "user", "content": player_message})
 
-    payload = {
+    return {
         "messages": messages,
         "model": "llama3-70b-8192",
         "temperature": 0.2,
         "max_tokens": 1024,
     }
 
+def call_groq_api(payload):
     response = requests.post(
         "https://api.groq.com/openai/v1/chat/completions",
         headers={
@@ -419,31 +479,159 @@ def message():
         },
         json=payload,
     )
+    return response
 
-    if response.status_code != 200:
-        return jsonify({"error": "Groq API failed"}), 500
 
+
+def parse_groq_response(response, user):
+    parsed = None
     try:
         response_json = response.json()
-        ai_content = response_json["choices"][0]["message"]["content"].strip()
-        print("AI raw content:  ", ai_content)
-        parsed = json.loads(ai_content)
-        print("AI parsed content:  ", parsed)
+        raw_text = response_json["choices"][0]["message"]["content"].strip()
+
+        print("Groq raw text response:", raw_text)
+
+        # Extract JSON from <json>...</json> block
+        match = re.search(r"<json>\s*(\{.*?\})\s*</json>", raw_text, re.DOTALL)
+        if not match:
+            print("Error: <json> tags not found or invalid JSON format.")
+            return None, {
+                "narration": "Sorry, the game master's response was confusing. Try again!",
+                "updates": {}
+            }
+
+        json_str = match.group(1).strip()
+
+        # Fix unescaped newlines in "narration" value
+        json_str = re.sub(r'("narration"\s*:\s*")((?:[^"\\]|\\.)*?)"', 
+                          lambda m: f'"narration": "{m.group(2).replace(chr(10), "\\n").replace(chr(13), "")}"',
+                          json_str,
+                          flags=re.DOTALL)
+
+        print("Extracted and cleaned JSON:", json_str)
+
+        parsed = json.loads(json_str)
+        updates = parsed.get("updates", {})
+
+        # --- Money delta ---
+        money_delta = updates.get("money")
+        if isinstance(money_delta, str):
+            try:
+                user.money += float(money_delta)
+                print(f"Updated money by {money_delta}, new balance: {user.money}")
+            except ValueError:
+                print(f"Invalid money delta: {money_delta}")
+        elif isinstance(money_delta, (int, float)):
+            user.money = money_delta
+            print(f"Set money to {user.money}")
+
+        # --- Inventory delta ---
+        inventory_delta = updates.get("inventory", {})
+        if isinstance(inventory_delta, dict):
+            if user.inventory is None:
+                user.inventory = {}
+
+            for item, change in inventory_delta.items():
+                try:
+                    change_amount = float(change)
+                except ValueError:
+                    print(f"Invalid inventory change for {item}: {change}")
+                    continue
+
+                current_qty = user.inventory.get(item, 0)
+                new_qty = current_qty + change_amount
+                if new_qty <= 0:
+                    user.inventory.pop(item, None)
+                else:
+                    user.inventory[item] = new_qty
+                print(f"Updated inventory: {item} {current_qty} -> {user.inventory.get(item, 0)}")
+
+        user.day = updates.get("day", user.day)
+        user.last_meal_completed = updates.get("last_meal_completed", user.last_meal_completed)
+
+        db.session.commit()
+
+        return raw_text, parsed
+
     except Exception as e:
-        app.logger.error("Groq JSON parsing failed: %s", e)
-        app.logger.error("Invalid Groq content: %s", ai_content)
-        return jsonify({
-            "error": "AI response was invalid JSON.",
-            "ai_response": ai_content,
-            "fallback_narration": "Oops! The AI got a little scrambled and didn't return a valid response. Try asking again."
-        }), 500
+        print("Unexpected error in parse_groq_response:", str(e))
+        print("Invalid Groq content:", json.dumps(parsed, indent=2) if parsed else "(No parsed content)")
+        return None, {
+            "narration": "An unexpected error happened while processing the game master's reply. Try again!",
+            "updates": {}
+        }
 
-    # Save chat history
-    user.chat_history.append({"user": player_message, "ai": parsed})
-    db.session.commit()
+def extract_json_tagged_response(text):
+    """Extracts and parses JSON from a <json>...</json> section in the AI response."""
+    match = re.search(r"<json>(.*?)</json>", text, re.DOTALL)
+    if not match:
+        raise ValueError("No <json> section found in AI response.")
+    json_str = match.group(1).strip()
+    return json.loads(json_str)
 
-    return jsonify(parsed)
+def safe_print(*args, **kwargs):
+    safe_args = [str(arg).encode("ascii", errors="ignore").decode("ascii") for arg in args]
+    print(*safe_args, **kwargs)
 
+import traceback
+
+def safe_print(*args, **kwargs):
+    safe_args = [str(arg).encode("ascii", errors="ignore").decode("ascii") for arg in args]
+    print(*safe_args, **kwargs)
+
+from flask import Response
+
+@app.route("/api/message", methods=["POST"])
+@token_required
+def message():
+    try:
+        print("[INFO] /api/message route hit")
+
+        data = request.get_json()
+        print("[DEBUG] Incoming data:", data)
+
+        user = get_user_from_token()
+        if not user:
+            print("[WARN] User not found.")
+            return Response(json.dumps({"error": "User not found"}), status=404, mimetype="application/json")
+
+        player_message = data.get("message", "").strip()
+        if not player_message:
+            print("[WARN] No message provided.")
+            return Response(json.dumps({"error": "No message provided"}), status=400, mimetype="application/json")
+
+        payload = build_groq_payload(user, player_message)
+        response = call_groq_api(payload)
+
+        print("[DEBUG] Groq status:", response.status_code)
+
+        if response.status_code != 200:
+            print("[ERROR] Groq API failed")
+            return Response(json.dumps({"error": "Groq API failed", "response_text": response.text}), status=500, mimetype="application/json")
+
+        ai_content, parsed = parse_groq_response(response, user)
+
+        if parsed is None:
+            print("[ERROR] Parsed is None.")
+            return Response(json.dumps({
+                "error": "AI response was invalid",
+                "fallback_narration": "Try again later"
+            }), status=500, mimetype="application/json")
+
+        user.chat_history.append({"user": player_message, "ai": parsed})
+        db.session.commit()
+
+        print("[INFO] Success. Returning parsed.")
+        return Response(json.dumps(parsed), mimetype="application/json")
+
+    except Exception as e:
+        import traceback
+        print("[FATAL] Exception in /api/message")
+        print(traceback.format_exc())
+        return Response(json.dumps({
+            "error": "Unexpected server error",
+            "trace": traceback.format_exc()
+        }), status=500, mimetype="application/json")
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001, debug=True)

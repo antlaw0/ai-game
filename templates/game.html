@@ -73,23 +73,28 @@
         return;
       }
 
-      playerName.textContent = data.player || "-";
-      restaurantName.textContent = data.restaurant || "-";
-      gameDay.textContent = data.day ?? "1";
-      gameMeal.textContent = data.last_meal_completed || "breakfast";
+      updateGameState(data);
+    } catch (err) {
+      console.error("Error loading game state:", err);
+    }
+  }
 
-      const money = parseFloat(data.money);
+  function updateGameState(updates) {
+    if (updates.day !== undefined) gameDay.textContent = updates.day;
+    if (updates.last_meal_completed !== undefined) gameMeal.textContent = updates.last_meal_completed;
+
+    if (updates.money !== undefined) {
+      const money = parseFloat(updates.money);
       playerMoney.textContent = isNaN(money) ? "0.00" : money.toFixed(2);
+    }
 
+    if (updates.inventory !== undefined && typeof updates.inventory === "object") {
       inventoryList.innerHTML = "";
-      const inv = data.inventory || {};
-      for (const [item, quantity] of Object.entries(inv)) {
+      for (const [item, quantity] of Object.entries(updates.inventory)) {
         const li = document.createElement("li");
         li.textContent = `${item} x${quantity}`;
         inventoryList.appendChild(li);
       }
-    } catch (err) {
-      console.error("Error loading game state:", err);
     }
   }
 
@@ -120,7 +125,11 @@
       } else {
         appendChat("Player", message, "player");
         appendChat("AI", data.narration || "(No response)", "ai");
-        await loadGameState();
+
+        // Immediately update UI with returned updates
+        if (data.updates) {
+          updateGameState(data.updates);
+        }
       }
     } catch (err) {
       console.error("Error sending message:", err);

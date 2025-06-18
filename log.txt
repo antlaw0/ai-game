@@ -1,5 +1,4 @@
-Game server current UTC time: 2025-06-17 19:03:50.464332+00:00
-SECRET_KEY is b7f3c9e1f91f4ac0e92f0b29c3b2db71a6452e92f2a4b8db15cbb2dc5d7e11ab
+Game server current UTC time: 2025-06-18 21:45:51.291711+00:00
  * Serving Flask app 'server'
  * Debug mode: on
 WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
@@ -10,36 +9,67 @@ Press CTRL+C to quit
  * Restarting with stat
  * Debugger is active!
  * Debugger PIN: 301-864-230
-127.0.0.1 - - [17/Jun/2025 14:04:33] "GET /login-page HTTP/1.1" 200 -
-127.0.0.1 - - [17/Jun/2025 14:04:43] "POST /api/login HTTP/1.1" 200 -
-127.0.0.1 - - [17/Jun/2025 14:04:43] "GET /game HTTP/1.1" 200 -
-127.0.0.1 - - [17/Jun/2025 14:04:45] "POST /api/state HTTP/1.1" 200 -
-127.0.0.1 - - [17/Jun/2025 14:04:59] "POST /api/message HTTP/1.1" 200 -
-127.0.0.1 - - [17/Jun/2025 14:05:00] "POST /api/state HTTP/1.1" 200 -
-127.0.0.1 - - [17/Jun/2025 14:05:12] "POST /api/message HTTP/1.1" 200 -
-127.0.0.1 - - [17/Jun/2025 14:05:12] "POST /api/state HTTP/1.1" 200 -
-Game server current UTC time: 2025-06-17 19:03:51.185018+00:00
-SECRET_KEY is b7f3c9e1f91f4ac0e92f0b29c3b2db71a6452e92f2a4b8db15cbb2dc5d7e11ab
-Received access_token from cookie: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo3LCJlbWFpbCI6ImFudGxhdzBAZ21haWwuY29tIiwiZXhwIjoxNzUwMjczNDgzfQ.TVNMByKB2KoZjGgLu63vfjVaAZBerK-J7FHx6elpo5s
-Received access_token from cookie: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo3LCJlbWFpbCI6ImFudGxhdzBAZ21haWwuY29tIiwiZXhwIjoxNzUwMjczNDgzfQ.TVNMByKB2KoZjGgLu63vfjVaAZBerK-J7FHx6elpo5s
-AI raw content:   {
-  "narration": "Here's the price breakdown:\n  - 4 oranges = $2 ($0.50 each)\nTotal: $2. You currently have $200. After this purchase, you'll have $198. Would you like to proceed with the purchase?",
-  "money_earned": 0,
-  "meal_completed": "none",
-  "day_increment": false,
-  "inventory_changes": {
-    "Oranges": 4
+--> Incoming request: GET /game
+Game server current UTC time: 2025-06-18 21:45:51.950407+00:00
+<-- Response status: 200 OK
+127.0.0.1 - - [18/Jun/2025 16:46:07] "GET /game HTTP/1.1" 200 -
+--> Incoming request: GET /.well-known/appspecific/com.chrome.devtools.json
+<-- Response status: 404 NOT FOUND
+127.0.0.1 - - [18/Jun/2025 16:46:07] "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 -
+--> Incoming request: POST /api/state
+Request JSON: {}
+<-- Response status: 200 OK
+Received access_token from cookie: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo3LCJlbWFpbCI6ImFudGxhdzBAZ21haWwuY29tIiwiZXhwIjoxNzUwMzYzNDQ5fQ.YH7_X3Xbnsyp5TTUj6aQx5_0h0wg8noXZCHRy9jKHB4
+127.0.0.1 - - [18/Jun/2025 16:46:09] "POST /api/state HTTP/1.1" 200 -
+--> Incoming request: POST /api/message
+Request JSON: {'message': 'I want to buy 3 pounds of strawberries, 2 pounds of dark chocolate and 2 pounds of white chocolate and colorful sprinkles'}
+<-- Response status: 200 OK
+Received access_token from cookie: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo3LCJlbWFpbCI6ImFudGxhdzBAZ21haWwuY29tIiwiZXhwIjoxNzUwMzYzNDQ5fQ.YH7_X3Xbnsyp5TTUj6aQx5_0h0wg8noXZCHRy9jKHB4
+[INFO] /api/message route hit
+[DEBUG] Incoming data: {'message': 'I want to buy 3 pounds of strawberries, 2 pounds of dark chocolate and 2 pounds of white chocolate and colorful sprinkles'}
+[DEBUG] Groq status: 200
+Groq raw text response: <json>
+{
+  "narration": "Items in your cart:
+    * 3 pounds of strawberries $12 per pound total: $36
+    * 2 pounds of dark chocolate $15 per pound total: $30
+    * 2 pounds of white chocolate $10 per pound total: $20
+    * Colorful sprinkles $5 total: $5
+    Grand Total $91
+    You have $1145.5. After this purchase you will have $1054.5. Would you like to proceed with this purchase? ",
+  "updates": {}
+}
+</json>
+Extracted and cleaned JSON: {
+  "narration": "Items in your cart:\n    * 3 pounds of strawberries $12 per pound total: $36\n    * 2 pounds of dark chocolate $15 per pound total: $30\n    * 2 pounds of white chocolate $10 per pound total: $20\n    * Colorful sprinkles $5 total: $5\n    Grand Total $91\n    You have $1145.5. After this purchase you will have $1054.5. Would you like to proceed with this purchase? ",
+  "updates": {}
+}
+[INFO] Success. Returning parsed.
+127.0.0.1 - - [18/Jun/2025 16:46:56] "POST /api/message HTTP/1.1" 200 -
+--> Incoming request: POST /api/message
+Request JSON: {'message': 'yes'}
+<-- Response status: 200 OK
+Received access_token from cookie: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo3LCJlbWFpbCI6ImFudGxhdzBAZ21haWwuY29tIiwiZXhwIjoxNzUwMzYzNDQ5fQ.YH7_X3Xbnsyp5TTUj6aQx5_0h0wg8noXZCHRy9jKHB4
+[INFO] /api/message route hit
+[DEBUG] Incoming data: {'message': 'yes'}
+[DEBUG] Groq status: 200
+Groq raw text response: It seems like you're ready to move on to the next meal. Since you've completed dinner" and it's the end of the day, let's summarize your day and move on to the next day.
+
+<json>
+{
+  "narration": "You've completed day 1. You earned a total of $0 today.",
+  "updates": {
+    "day": 2,
+    "last_meal_completed": "breakfast"
   }
 }
-AI parsed content:   {'narration': "Here's the price breakdown:\n  - 4 oranges = $2 ($0.50 each)\nTotal: $2. You currently have $200. After this purchase, you'll have $198. Would you like to proceed with the purchase?", 'money_earned': 0, 'meal_completed': 'none', 'day_increment': False, 'inventory_changes': {'Oranges': 4}}
-Received access_token from cookie: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo3LCJlbWFpbCI6ImFudGxhdzBAZ21haWwuY29tIiwiZXhwIjoxNzUwMjczNDgzfQ.TVNMByKB2KoZjGgLu63vfjVaAZBerK-J7FHx6elpo5s
-Received access_token from cookie: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo3LCJlbWFpbCI6ImFudGxhdzBAZ21haWwuY29tIiwiZXhwIjoxNzUwMjczNDgzfQ.TVNMByKB2KoZjGgLu63vfjVaAZBerK-J7FHx6elpo5s
-AI raw content:   {
-  "narration": "Let's start the day! You have $200 and a small inventory of tomatoes, cheese, and basil. Describe your breakfast dish.",
-  "money_earned": 0,
-  "meal_completed": "none",
-  "day_increment": false,
-  "inventory_changes": {}
+</json>
+Extracted and cleaned JSON: {
+  "narration": "You've completed day 1. You earned a total of $0 today.",
+  "updates": {
+    "day": 2,
+    "last_meal_completed": "breakfast"
+  }
 }
-AI parsed content:   {'narration': "Let's start the day! You have $200 and a small inventory of tomatoes, cheese, and basil. Describe your breakfast dish.", 'money_earned': 0, 'meal_completed': 'none', 'day_increment': False, 'inventory_changes': {}}
-Received access_token from cookie: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo3LCJlbWFpbCI6ImFudGxhdzBAZ21haWwuY29tIiwiZXhwIjoxNzUwMjczNDgzfQ.TVNMByKB2KoZjGgLu63vfjVaAZBerK-J7FHx6elpo5s
+[INFO] Success. Returning parsed.
+127.0.0.1 - - [18/Jun/2025 16:47:04] "POST /api/message HTTP/1.1" 200 -
