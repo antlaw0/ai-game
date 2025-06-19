@@ -1,4 +1,4 @@
-Game server current UTC time: 2025-06-18 21:45:51.291711+00:00
+Game server current UTC time: 2025-06-19 22:17:16.366377+00:00
  * Serving Flask app 'server'
  * Debug mode: on
 WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
@@ -9,67 +9,32 @@ Press CTRL+C to quit
  * Restarting with stat
  * Debugger is active!
  * Debugger PIN: 301-864-230
---> Incoming request: GET /game
-Game server current UTC time: 2025-06-18 21:45:51.950407+00:00
-<-- Response status: 200 OK
-127.0.0.1 - - [18/Jun/2025 16:46:07] "GET /game HTTP/1.1" 200 -
---> Incoming request: GET /.well-known/appspecific/com.chrome.devtools.json
-<-- Response status: 404 NOT FOUND
-127.0.0.1 - - [18/Jun/2025 16:46:07] "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 -
---> Incoming request: POST /api/state
-Request JSON: {}
-<-- Response status: 200 OK
-Received access_token from cookie: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo3LCJlbWFpbCI6ImFudGxhdzBAZ21haWwuY29tIiwiZXhwIjoxNzUwMzYzNDQ5fQ.YH7_X3Xbnsyp5TTUj6aQx5_0h0wg8noXZCHRy9jKHB4
-127.0.0.1 - - [18/Jun/2025 16:46:09] "POST /api/state HTTP/1.1" 200 -
 --> Incoming request: POST /api/message
-Request JSON: {'message': 'I want to buy 3 pounds of strawberries, 2 pounds of dark chocolate and 2 pounds of white chocolate and colorful sprinkles'}
-<-- Response status: 200 OK
-Received access_token from cookie: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo3LCJlbWFpbCI6ImFudGxhdzBAZ21haWwuY29tIiwiZXhwIjoxNzUwMzYzNDQ5fQ.YH7_X3Xbnsyp5TTUj6aQx5_0h0wg8noXZCHRy9jKHB4
+Game server current UTC time: 2025-06-19 22:17:17.032376+00:00
+Request JSON: {'message': 'I want to buy 2 coconuts'}
+<-- Response status: 500 INTERNAL SERVER ERROR
+Received access_token from cookie: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo3LCJlbWFpbCI6ImFudGxhdzBAZ21haWwuY29tIiwiZXhwIjoxNzUwNDUxOTEwfQ.aj3ofyNAdrNzu897bOAVWpZyiR2700HFd0LbRP3TPp4
 [INFO] /api/message route hit
-[DEBUG] Incoming data: {'message': 'I want to buy 3 pounds of strawberries, 2 pounds of dark chocolate and 2 pounds of white chocolate and colorful sprinkles'}
-[DEBUG] Groq status: 200
-Groq raw text response: <json>
+[DEBUG] Incoming data: {'message': 'I want to buy 2 coconuts'}
+[TOKENS] System Prompt: 1530
+[TOKENS] Chat History: 2
+[TOKENS] Latest User Message: 9
+[TOKENS] Total Prompt Tokens: 1541
+Groq response status code: 400
+Groq response raw text: '{"error":{"message":"\'messages\' : value must be an array","type":"invalid_request_error"}}\n'
+Groq response JSON try:
 {
-  "narration": "Items in your cart:
-    * 3 pounds of strawberries $12 per pound total: $36
-    * 2 pounds of dark chocolate $15 per pound total: $30
-    * 2 pounds of white chocolate $10 per pound total: $20
-    * Colorful sprinkles $5 total: $5
-    Grand Total $91
-    You have $1145.5. After this purchase you will have $1054.5. Would you like to proceed with this purchase? ",
-  "updates": {}
+  "error": {
+    "message": "'messages' : value must be an array",
+    "type": "invalid_request_error"
+  }
 }
-</json>
-Extracted and cleaned JSON: {
-  "narration": "Items in your cart:\n    * 3 pounds of strawberries $12 per pound total: $36\n    * 2 pounds of dark chocolate $15 per pound total: $30\n    * 2 pounds of white chocolate $10 per pound total: $20\n    * Colorful sprinkles $5 total: $5\n    Grand Total $91\n    You have $1145.5. After this purchase you will have $1054.5. Would you like to proceed with this purchase? ",
-  "updates": {}
-}
-[INFO] Success. Returning parsed.
-127.0.0.1 - - [18/Jun/2025 16:46:56] "POST /api/message HTTP/1.1" 200 -
---> Incoming request: POST /api/message
-Request JSON: {'message': 'yes'}
-<-- Response status: 200 OK
-Received access_token from cookie: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo3LCJlbWFpbCI6ImFudGxhdzBAZ21haWwuY29tIiwiZXhwIjoxNzUwMzYzNDQ5fQ.YH7_X3Xbnsyp5TTUj6aQx5_0h0wg8noXZCHRy9jKHB4
-[INFO] /api/message route hit
-[DEBUG] Incoming data: {'message': 'yes'}
-[DEBUG] Groq status: 200
-Groq raw text response: It seems like you're ready to move on to the next meal. Since you've completed dinner" and it's the end of the day, let's summarize your day and move on to the next day.
+[FATAL] Exception in /api/message
+Traceback (most recent call last):
+  File "C:\Users\alawl\Desktop\Game Dev Projects\AI Game\ai-game\server.py", line 628, in message
+    response = call_groq_api(payload)
+  File "C:\Users\alawl\Desktop\Game Dev Projects\AI Game\ai-game\server.py", line 382, in call_groq_api
+    raise ValueError(f"Groq API request failed with status {response.status_code}")
+ValueError: Groq API request failed with status 400
 
-<json>
-{
-  "narration": "You've completed day 1. You earned a total of $0 today.",
-  "updates": {
-    "day": 2,
-    "last_meal_completed": "breakfast"
-  }
-}
-</json>
-Extracted and cleaned JSON: {
-  "narration": "You've completed day 1. You earned a total of $0 today.",
-  "updates": {
-    "day": 2,
-    "last_meal_completed": "breakfast"
-  }
-}
-[INFO] Success. Returning parsed.
-127.0.0.1 - - [18/Jun/2025 16:47:04] "POST /api/message HTTP/1.1" 200 -
+127.0.0.1 - - [19/Jun/2025 17:17:36] "POST /api/message HTTP/1.1" 500 -

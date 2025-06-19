@@ -1,5 +1,6 @@
 from flask import g, Flask, render_template, redirect, url_for, request, make_response, jsonify
 import jwt
+import tiktoken
 import os
 from functools import wraps
 from flask_sqlalchemy import SQLAlchemy
@@ -86,7 +87,11 @@ Well done. With a score of 26, you earn $520.
 </json>
 
 Do not include any commentary or explanation outside of the narration and JSON. As for the inventory inside the json, the "-+" and "-2" indicate that the inventory item should be reduced or increased by that amount, "+" increase and "-" decrease. If an item quantity reaches 0 or less, remove that item from the inventory list. As for the money, the "+" indicates you add that amount to the player's current money value and a "-" means you decrease the player's money by that amount. Ensure these numbers are a string and not an integer or float in the json.
-### Rules:
+Use the chat history to maintain continuity. If the last user message is a response to a prior prompt (e.g. "yes", "no", "cancel"), you must interpret it in context of the most recent messages in the chat history.
+
+The chat history is passed to you as a list of previous turns in the conversation. Each entry contains:
+- "user": the player’s message
+- "ai": your last response (including "narration" and optional "updates")
 
 ## Game Rules ##
 1. The game starts at day 1 with breakfast.
@@ -144,9 +149,20 @@ You pay $70 for these items.
 Be fun, creative, and logical.
 """
 
-# Register all blueprints
-#for bp in blueprints:
-    #app.register_blueprint(bp)
+def count_tokens(text, model="gpt-3.5-turbo"):
+    enc = tiktoken.encoding_for_model(model)
+    return len(enc.encode(text))
+
+def count_message_tokens(messages, model="gpt-3.5-turbo"):
+    enc = tiktoken.encoding_for_model(model)
+    tokens = 0
+    for msg in messages:
+        tokens += 4  # Base tokens per message (role, name, etc.)
+        for key, value in msg.items():
+            tokens += len(enc.encode(value))
+    tokens += 2  # Priming
+    return tokens
+
 
 import sys
 import traceback
@@ -316,6 +332,11 @@ def login_user():
         return {"error": f"Failed to reach account management server: {str(e)}"}, 500
 
 
+def count_tokens(text, model="gpt-3.5-turbo"):
+    enc = tiktoken.encoding_for_model(model)
+    return len(enc.encode(text))
+
+
 def build_full_message(state, last_meal, message):
     return (
         f"Day: {state.get('day', 1)}\n"
@@ -451,37 +472,32 @@ def build_history_summary(chat_history):
         for entry in chat_history[-5:] if isinstance(entry, dict)
     ])
 
-def build_groq_payload(user, player_message):
-    messages = [
-        {"role": "system", "content": GROQ_SYSTEM_PROMPT},
-        {"role": "system", "content": build_state_summary(user)}
-    ]
+def build_groq_payload(user, user_input, max_chat_history=10):
+    messages = []
 
-    history = build_history_summary(user.chat_history)
-    if history:
-        messages.append({"role": "system", "content": f"Recent chat history:\n{history}"})
+    # Add system prompt
+    messages.append({"role": "system", "content": GROQ_SYSTEM_PROMPT})
 
-    messages.append({"role": "user", "content": player_message})
+    # Add recent chat history
+    if user.chat_history:
+        for entry in user.chat_history[-max_chat_history:]:
+            if "user" in entry:
+                messages.append({"role": "user", "content": entry["user"]})
+            if "ai" in entry:
+                # ai can be dict or string
+                if isinstance(entry["ai"], dict):
+                    messages.append({"role": "assistant", "content": json.dumps(entry["ai"])})
+                else:
+                    messages.append({"role": "assistant", "content": str(entry["ai"])})
+
+    # Add the current player message
+    messages.append({"role": "user", "content": user_input})
 
     return {
+        "model": GROQ_MODEL,  
         "messages": messages,
-        "model": "llama3-70b-8192",
-        "temperature": 0.2,
-        "max_tokens": 1024,
+        "temperature": 0.7
     }
-
-def call_groq_api(payload):
-    response = requests.post(
-        "https://api.groq.com/openai/v1/chat/completions",
-        headers={
-            "Authorization": f"Bearer {GROQ_API_KEY}",
-            "Content-Type": "application/json",
-        },
-        json=payload,
-    )
-    return response
-
-
 
 def parse_groq_response(response, user):
     parsed = None
@@ -600,13 +616,21 @@ def message():
             print("[WARN] No message provided.")
             return Response(json.dumps({"error": "No message provided"}), status=400, mimetype="application/json")
 
+        # Include chat history in the payload
         payload = build_groq_payload(user, player_message)
+        system_token_count = count_tokens(payload["messages"][0]["content"])
+        chat_token_count = count_message_tokens(payload["messages"][1:-1])
+        user_token_count = count_tokens(payload["messages"][-1]["content"])
+        print("[TOKENS] System Prompt:", system_token_count)
+        print("[TOKENS] Chat History:", chat_token_count)
+        print("[TOKENS] Latest User Message:", user_token_count)
+        print("[TOKENS] Total Prompt Tokens:", system_token_count + chat_token_count + user_token_count)
         response = call_groq_api(payload)
 
         print("[DEBUG] Groq status:", response.status_code)
 
         if response.status_code != 200:
-            print("[ERROR] Groq API failed")
+            print("[ERROR] Groq API failed:", response.text)
             return Response(json.dumps({"error": "Groq API failed", "response_text": response.text}), status=500, mimetype="application/json")
 
         ai_content, parsed = parse_groq_response(response, user)
@@ -618,7 +642,15 @@ def message():
                 "fallback_narration": "Try again later"
             }), status=500, mimetype="application/json")
 
-        user.chat_history.append({"user": player_message, "ai": parsed})
+        # Append to chat history using trimmed format
+        user.chat_history.append({
+            "user": player_message,
+            "ai": {
+                "narration": parsed.get("narration", ""),
+                "updates": parsed.get("updates", {})
+            }
+        })
+
         db.session.commit()
 
         print("[INFO] Success. Returning parsed.")
