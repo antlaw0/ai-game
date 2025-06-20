@@ -137,6 +137,11 @@ You pay $70 for these items.
 </json>
 
     ## end of example response ##
+    When a player requests to buy items (e.g. "I want to buy..."), first show a purchase summary and ask "Would you like to proceed?".
+Do not finalize the purchase unless the player replies with "yes", "confirm", or something similar *in the very next message*.
+If the next message is not a clear confirmation, discard the cart and ask again.
+Never finalize purchases from new messages that start with "I want..." or similar.
+
 7. For each meal, you are to give the player a score in certain categories as you evaluate the description of what and how they cook the meal. The categories are:
     * Taste:  Do the flavors match well together? Did they use proper ingredients and technique to enhance taste?
     * Technique:  Did they demonstrate cooking skill and applied knowledge and experience as they prepare the dish?
@@ -336,6 +341,29 @@ def count_tokens(text, model="gpt-3.5-turbo"):
     enc = tiktoken.encoding_for_model(model)
     return len(enc.encode(text))
 
+def build_groq_payload(chat_history, player_message, max_turns=10):
+    messages = [{"role": "system", "content": GROQ_SYSTEM_PROMPT}]
+    
+    # Include the last `max_turns` full turns (user + assistant)
+    for turn in chat_history[-max_turns:]:
+        user_msg = turn.get("user")
+        ai_msg = turn.get("ai")
+        if user_msg:
+            messages.append({"role": "user", "content": user_msg})
+        if ai_msg:
+            if isinstance(ai_msg, dict):
+                messages.append({"role": "assistant", "content": json.dumps(ai_msg)})
+            else:
+                messages.append({"role": "assistant", "content": str(ai_msg)})
+
+    return {
+        "model": GROQ_MODEL,
+        "messages": messages,
+        "temperature": 0.7,
+        "max_tokens": 1024,
+        "top_p": 1,
+        "stream": False
+    }
 
 def build_full_message(state, last_meal, message):
     return (
@@ -352,21 +380,14 @@ def trim_chat_history(history, max_tokens=4096, estimated_per_message=200, buffe
 
 
 
-def call_groq_api(messages):
+def call_groq_api(payload):
     response = requests.post(
         GROQ_API_URL,
         headers={
             "Authorization": f"Bearer {GROQ_API_KEY}",
             "Content-Type": "application/json"
         },
-        json={
-            "model": GROQ_MODEL,
-            "messages": messages,
-            "temperature": 0.7,
-            "max_tokens": 512,
-            "top_p": 1,
-            "stream": False
-        }
+        json=payload  # <-- Use the full payload directly
     )
 
     print("Groq response status code:", response.status_code)
@@ -472,32 +493,6 @@ def build_history_summary(chat_history):
         for entry in chat_history[-5:] if isinstance(entry, dict)
     ])
 
-def build_groq_payload(user, user_input, max_chat_history=10):
-    messages = []
-
-    # Add system prompt
-    messages.append({"role": "system", "content": GROQ_SYSTEM_PROMPT})
-
-    # Add recent chat history
-    if user.chat_history:
-        for entry in user.chat_history[-max_chat_history:]:
-            if "user" in entry:
-                messages.append({"role": "user", "content": entry["user"]})
-            if "ai" in entry:
-                # ai can be dict or string
-                if isinstance(entry["ai"], dict):
-                    messages.append({"role": "assistant", "content": json.dumps(entry["ai"])})
-                else:
-                    messages.append({"role": "assistant", "content": str(entry["ai"])})
-
-    # Add the current player message
-    messages.append({"role": "user", "content": user_input})
-
-    return {
-        "model": GROQ_MODEL,  
-        "messages": messages,
-        "temperature": 0.7
-    }
 
 def parse_groq_response(response, user):
     parsed = None
@@ -597,6 +592,22 @@ def safe_print(*args, **kwargs):
 
 from flask import Response
 
+
+from pprint import pprint
+"""
+def test_payload():
+    class DummyUser:
+        chat_history = [
+            {"user": "I want to buy cheese", "ai": {"narration": "You place cheese in your cart", "updates": {}}},
+            {"user": "I cook eggs", "ai": {"narration": "Eggs cooked well", "updates": {}}}
+        ]
+    
+    payload = build_groq_payload(DummyUser(), "I want to buy 4 oranges")
+    pprint(payload)
+
+test_payload()
+"""
+
 @app.route("/api/message", methods=["POST"])
 @token_required
 def message():
@@ -616,15 +627,23 @@ def message():
             print("[WARN] No message provided.")
             return Response(json.dumps({"error": "No message provided"}), status=400, mimetype="application/json")
 
-        # Include chat history in the payload
-        payload = build_groq_payload(user, player_message)
+        # Append current user message to history first (with empty ai for now)
+        user.chat_history.append({"user": player_message, "ai": None})
+        # Trim to last 5 full exchanges
+        if len(user.chat_history) > 5:
+            user.chat_history = user.chat_history[-5:]
+        db.session.commit()
+
+        # Include full chat history in the payload (up to 10 turns)
+        payload = build_groq_payload(user.chat_history, player_message, max_turns=10)
+
+        # Token tracking
         system_token_count = count_tokens(payload["messages"][0]["content"])
-        chat_token_count = count_message_tokens(payload["messages"][1:-1])
-        user_token_count = count_tokens(payload["messages"][-1]["content"])
+        chat_token_count = count_message_tokens(payload["messages"][1:])
         print("[TOKENS] System Prompt:", system_token_count)
-        print("[TOKENS] Chat History:", chat_token_count)
-        print("[TOKENS] Latest User Message:", user_token_count)
-        print("[TOKENS] Total Prompt Tokens:", system_token_count + chat_token_count + user_token_count)
+        print("[TOKENS] Full Payload:", chat_token_count)
+        print("[TOKENS] Total:", system_token_count + chat_token_count)
+
         response = call_groq_api(payload)
 
         print("[DEBUG] Groq status:", response.status_code)
@@ -642,15 +661,12 @@ def message():
                 "fallback_narration": "Try again later"
             }), status=500, mimetype="application/json")
 
-        # Append to chat history using trimmed format
-        user.chat_history.append({
-            "user": player_message,
-            "ai": {
+        # Update the latest chat history entry with Groq's response
+        if user.chat_history:
+            user.chat_history[-1]["ai"] = {
                 "narration": parsed.get("narration", ""),
                 "updates": parsed.get("updates", {})
             }
-        })
-
         db.session.commit()
 
         print("[INFO] Success. Returning parsed.")

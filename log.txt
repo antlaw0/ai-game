@@ -1,4 +1,4 @@
-Game server current UTC time: 2025-06-19 22:17:16.366377+00:00
+Game server current UTC time: 2025-06-20 16:41:56.820562+00:00
  * Serving Flask app 'server'
  * Debug mode: on
 WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
@@ -9,32 +9,153 @@ Press CTRL+C to quit
  * Restarting with stat
  * Debugger is active!
  * Debugger PIN: 301-864-230
+--> Incoming request: GET /game
+Game server current UTC time: 2025-06-20 16:41:57.513664+00:00
+<-- Response status: 200 OK
+127.0.0.1 - - [20/Jun/2025 11:43:15] "GET /game HTTP/1.1" 200 -
+--> Incoming request: POST /api/state
+Request JSON: {}
+<-- Response status: 200 OK
+Received access_token from cookie: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJlbWFpbCI6ImFudGxhdzBAZ21haWwuY29tIiwiZXhwIjoxNzUwNTE5OTQ2fQ.y3sWLm7GYRq9T9mlxRHn1wfiWUMeYYDVakT0kdBVKwU
+127.0.0.1 - - [20/Jun/2025 11:43:17] "POST /api/state HTTP/1.1" 200 -
 --> Incoming request: POST /api/message
-Game server current UTC time: 2025-06-19 22:17:17.032376+00:00
-Request JSON: {'message': 'I want to buy 2 coconuts'}
-<-- Response status: 500 INTERNAL SERVER ERROR
-Received access_token from cookie: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo3LCJlbWFpbCI6ImFudGxhdzBAZ21haWwuY29tIiwiZXhwIjoxNzUwNDUxOTEwfQ.aj3ofyNAdrNzu897bOAVWpZyiR2700HFd0LbRP3TPp4
+Request JSON: {'message': 'I want to buy a block of cheddar cheese'}
+<-- Response status: 200 OK
+Received access_token from cookie: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJlbWFpbCI6ImFudGxhdzBAZ21haWwuY29tIiwiZXhwIjoxNzUwNTE5OTQ2fQ.y3sWLm7GYRq9T9mlxRHn1wfiWUMeYYDVakT0kdBVKwU
 [INFO] /api/message route hit
-[DEBUG] Incoming data: {'message': 'I want to buy 2 coconuts'}
+[DEBUG] Incoming data: {'message': 'I want to buy a block of cheddar cheese'}
 [TOKENS] System Prompt: 1530
-[TOKENS] Chat History: 2
-[TOKENS] Latest User Message: 9
-[TOKENS] Total Prompt Tokens: 1541
-Groq response status code: 400
-Groq response raw text: '{"error":{"message":"\'messages\' : value must be an array","type":"invalid_request_error"}}\n'
+[TOKENS] Full Payload: 62
+[TOKENS] Total: 1592
+Groq response status code: 200
+Groq response raw text: '{"id":"chatcmpl-5fa93e58-9b6e-4eb1-8d06-83e81200f27d","object":"chat.completion","created":1750437832,"model":"llama3-70b-8192","choices":[{"index":0,"message":{"role":"assistant","content":"\\u003cjson\\u003e\\n{\\n  \\"narration\\": \\"You purchase a block of cheddar cheese for $8. You now have $72.\\",\\n  \\"updates\\": {\\n    \\"money\\": \\"-8\\",\\n    \\"inventory\\": {\\n      \\"Block of cheddar cheese\\": \\"+1\\"\\n    }\\n  }\\n}\\n\\u003c/json\\u003e"},"logprobs":null,"finish_reason":"stop"}],"usage":{"queue_time":0.20257634300000002,"prompt_tokens":1619,"prompt_time":0.060318352,"completion_tokens":66,"completion_time":0.188571429,"total_tokens":1685,"total_time":0.248889781},"usage_breakdown":null,"system_fingerprint":"fp_dd4ae1c591","x_groq":{"id":"req_01jy73k97aeteawqaq8y9bhyt6"}}\n'
 Groq response JSON try:
 {
-  "error": {
-    "message": "'messages' : value must be an array",
-    "type": "invalid_request_error"
+  "id": "chatcmpl-5fa93e58-9b6e-4eb1-8d06-83e81200f27d",
+  "object": "chat.completion",
+  "created": 1750437832,
+  "model": "llama3-70b-8192",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "<json>\n{\n  \"narration\": \"You purchase a block of cheddar cheese for $8. You now have $72.\",\n  \"updates\": {\n    \"money\": \"-8\",\n    \"inventory\": {\n      \"Block of cheddar cheese\": \"+1\"\n    }\n  }\n}\n</json>"
+      },
+      "logprobs": null,
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "queue_time": 0.20257634300000002,
+    "prompt_tokens": 1619,
+    "prompt_time": 0.060318352,
+    "completion_tokens": 66,
+    "completion_time": 0.188571429,
+    "total_tokens": 1685,
+    "total_time": 0.248889781
+  },
+  "usage_breakdown": null,
+  "system_fingerprint": "fp_dd4ae1c591",
+  "x_groq": {
+    "id": "req_01jy73k97aeteawqaq8y9bhyt6"
   }
 }
-[FATAL] Exception in /api/message
-Traceback (most recent call last):
-  File "C:\Users\alawl\Desktop\Game Dev Projects\AI Game\ai-game\server.py", line 628, in message
-    response = call_groq_api(payload)
-  File "C:\Users\alawl\Desktop\Game Dev Projects\AI Game\ai-game\server.py", line 382, in call_groq_api
-    raise ValueError(f"Groq API request failed with status {response.status_code}")
-ValueError: Groq API request failed with status 400
-
-127.0.0.1 - - [19/Jun/2025 17:17:36] "POST /api/message HTTP/1.1" 500 -
+[DEBUG] Groq status: 200
+Groq raw text response: <json>
+{
+  "narration": "You purchase a block of cheddar cheese for $8. You now have $72.",
+  "updates": {
+    "money": "-8",
+    "inventory": {
+      "Block of cheddar cheese": "+1"
+    }
+  }
+}
+</json>
+Extracted and cleaned JSON: {
+  "narration": "You purchase a block of cheddar cheese for $8. You now have $72.",
+  "updates": {
+    "money": "-8",
+    "inventory": {
+      "Block of cheddar cheese": "+1"
+    }
+  }
+}
+Updated money by -8, new balance: 157.0
+Updated inventory: Block of cheddar cheese 0 -> 1.0
+[INFO] Success. Returning parsed.
+127.0.0.1 - - [20/Jun/2025 11:43:53] "POST /api/message HTTP/1.1" 200 -
+--> Incoming request: POST /api/message
+Request JSON: {'message': 'I want to buy a loaf of bread'}
+<-- Response status: 200 OK
+Received access_token from cookie: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJlbWFpbCI6ImFudGxhdzBAZ21haWwuY29tIiwiZXhwIjoxNzUwNTE5OTQ2fQ.y3sWLm7GYRq9T9mlxRHn1wfiWUMeYYDVakT0kdBVKwU
+[INFO] /api/message route hit
+[DEBUG] Incoming data: {'message': 'I want to buy a loaf of bread'}
+[TOKENS] System Prompt: 1530
+[TOKENS] Full Payload: 69
+[TOKENS] Total: 1599
+Groq response status code: 200
+Groq response raw text: '{"id":"chatcmpl-c07a89dc-5b70-4b19-8bf0-3b2b30d7d536","object":"chat.completion","created":1750437863,"model":"llama3-70b-8192","choices":[{"index":0,"message":{"role":"assistant","content":"\\u003cjson\\u003e\\n{\\n  \\"narration\\": \\"You purchased a loaf of bread for $2. You now have $148.\\",\\n  \\"updates\\": {\\n    \\"money\\": \\"-2\\",\\n    \\"inventory\\": {\\n      \\"Bread\\": \\"+1\\"\\n    }\\n  }\\n}\\n\\u003c/json\\u003e"},"logprobs":null,"finish_reason":"stop"}],"usage":{"queue_time":0.202364438,"prompt_tokens":1626,"prompt_time":0.060796818,"completion_tokens":61,"completion_time":0.195844126,"total_tokens":1687,"total_time":0.256640944},"usage_breakdown":null,"system_fingerprint":"fp_dd4ae1c591","x_groq":{"id":"req_01jy73m7qaf4htmk66w8h1jmvn"}}\n'
+Groq response JSON try:
+{
+  "id": "chatcmpl-c07a89dc-5b70-4b19-8bf0-3b2b30d7d536",
+  "object": "chat.completion",
+  "created": 1750437863,
+  "model": "llama3-70b-8192",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "<json>\n{\n  \"narration\": \"You purchased a loaf of bread for $2. You now have $148.\",\n  \"updates\": {\n    \"money\": \"-2\",\n    \"inventory\": {\n      \"Bread\": \"+1\"\n    }\n  }\n}\n</json>"
+      },
+      "logprobs": null,
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "queue_time": 0.202364438,
+    "prompt_tokens": 1626,
+    "prompt_time": 0.060796818,
+    "completion_tokens": 61,
+    "completion_time": 0.195844126,
+    "total_tokens": 1687,
+    "total_time": 0.256640944
+  },
+  "usage_breakdown": null,
+  "system_fingerprint": "fp_dd4ae1c591",
+  "x_groq": {
+    "id": "req_01jy73m7qaf4htmk66w8h1jmvn"
+  }
+}
+[DEBUG] Groq status: 200
+Groq raw text response: <json>
+{
+  "narration": "You purchased a loaf of bread for $2. You now have $148.",
+  "updates": {
+    "money": "-2",
+    "inventory": {
+      "Bread": "+1"
+    }
+  }
+}
+</json>
+Extracted and cleaned JSON: {
+  "narration": "You purchased a loaf of bread for $2. You now have $148.",
+  "updates": {
+    "money": "-2",
+    "inventory": {
+      "Bread": "+1"
+    }
+  }
+}
+Updated money by -2, new balance: 155.0
+Updated inventory: Bread 0 -> 1.0
+[INFO] Success. Returning parsed.
+127.0.0.1 - - [20/Jun/2025 11:44:25] "POST /api/message HTTP/1.1" 200 -
+ * Detected change in 'C:\\Users\\alawl\\Desktop\\Game Dev Projects\\AI Game\\ai-game\\server.py', reloading
+ * Restarting with stat
+ * Debugger is active!
+ * Debugger PIN: 301-864-230
+Game server current UTC time: 2025-06-20 16:56:00.964948+00:00

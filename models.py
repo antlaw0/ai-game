@@ -1,5 +1,6 @@
 from extensions import db
 from sqlalchemy.dialects.postgresql import JSON
+from sqlalchemy.ext.mutable import MutableList  # ✅ Required for tracking list mutations
 
 class User(db.Model):
     __tablename__ = 'users'
@@ -13,4 +14,4 @@ class User(db.Model):
     money = db.Column(db.Float, default=0.0)
     day = db.Column(db.Integer, default=1)
     last_meal_completed = db.Column(db.String, default="breakfast", nullable=False)
-    chat_history = db.Column(JSON, default=[])
+    chat_history = db.Column(MutableList.as_mutable(JSON), default=list)
